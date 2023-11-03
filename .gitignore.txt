@@ -1,24 +1,43 @@
-# Ignore system and temporary files
-.DS_Store
-Thumbs.db
-desktop.ini
+# Ignore .txt files
+*.txt
 
-# Ignore text editor and IDE files
-*.swp
-*.swo
-*.swn
-.idea/
-.vscode/
+# Ignore .csv files
+*.csv
 
-# Ignore build and output files
-/build/
-/dist/
-/node_modules/
+# Ignore Excel files
+*.xlsx
+*.xls
 
-# Ignore log and database files
-*.log
+# Ignore JSON files
+*.json
+
+# Ignore XML files
+*.xml
+
+# Ignore SQLite database files
 *.sqlite
 
-# Custom
+# Ignore log files
+*.log
+
+# Ignore backup files
+*~
+
 *.zip
-/data/
+
+*.parquet
+
+# Ignore all files in a specific directory
+/directory-to-ignore/
+
+# Ignore all files in a nested directory
+/nested-directory-to-ignore/
+
+# Ignore all files with a specific prefix
+prefix_*
+
+# Ignore all files with a specific suffix
+*_suffix
+
+# Ignore all files in a specific subdirectory
+/subdirectory-to-ignore/
