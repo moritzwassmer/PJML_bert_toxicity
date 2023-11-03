@@ -41,3 +41,5 @@ prefix_*
 
 # Ignore all files in a specific subdirectory
 /subdirectory-to-ignore/
+
+**/*.ipynb_checkpoints/
