@@ -134,7 +134,7 @@ print(batch_embed.size())
 tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 
 # load test dataset
-train, test = load_data("jigsaw_toxicity_pred", transformation=tokenizer, n_train=100, n_test=None)
+train, test = load_data("jigsaw_toxicity_pred", transformation=tokenizer, n_train=128, n_test=None)
 
 # set up dataloader
 train_loader = DataLoader(train, batch_size=32, shuffle=True)
@@ -143,7 +143,7 @@ train_loader = DataLoader(train, batch_size=32, shuffle=True)
 bert = model.Model(vocab_size=VOCAB_SIZE, model_dimension=EMBED_SIZE, pretrained_model=pretrained_model, number_layers=12, number_heads=12)
 
 # number of epochs
-epochs = 3
+epochs = 5
 
 # train model
 bert_trainer = training.TrainBERT(bert, train_loader, epochs, device='cpu')

@@ -22,8 +22,8 @@ class TrainBERT:
         # learning rate scheduler
         self.scheduler = StepLR(self.optimizer, step_size=5, gamma=0.1)
 
-        # cost function cross entropy loss for predicting classes of toxicity
-        self.criterion = nn.CrossEntropyLoss()
+        # cost function binary cross entropy loss for predicting each beloning to a class seperately
+        self.criterion = nn.BCELoss()
         
         # predictions threshold above which predictions are set True
         self.threshold = threshold 
@@ -37,6 +37,7 @@ class TrainBERT:
         avg_loss = 0.0
         corrects_sum = 0
         total = 0
+        zero_prediction = 0
         
         # set back progress bar
         self.bar = None
@@ -56,22 +57,22 @@ class TrainBERT:
             
             # compute loss with labels (input, target)
             loss = self.criterion(output, labels)
+
+            # average loss per batch
+            avg_loss += loss.item()
             
             # backward pass for training
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
             
-            # average loss per batch
-            avg_loss += loss.item()
-            
             # compute accuracy 
-            # softmax the output vector to get probabilites
-            predictions = nn.functional.softmax(output, dim=1)
             # use threshold to determine which of the outputs are considered True
-            predictions = torch.ge(predictions, self.threshold).int()
+            predictions = torch.ge(output, self.threshold).int()
             # compare with the label and count correct classifications
             corrects_sum += (predictions == labels).sum().item()
+            # check whether model is only predicting 0
+            # zero_prediction += ((predictions == 0) & (labels == 0)).sum().item()
             # sump up total number of labels in batch
             total += labels.nelement()
             
