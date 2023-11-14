@@ -63,24 +63,25 @@ def main():
     # Training (for cluster)
 
     # load the entire training data (length dataset_length) into train
-    train, _ = load_data("jigsaw_toxicity_pred", transformation=tokenizer, n_train=dataset_length, n_test=None)
+    # train, _ = load_data("jigsaw_toxicity_pred", transformation=tokenizer, n_train=dataset_length, n_test=None)
+    train, _ = load_data("jigsaw_toxicity_pred", transformation=tokenizer, n_train=128, n_test=None)
 
     # set up dataloader
-    train_loader = DataLoader(train, batch_size=128, shuffle=True)
+    train_loader = DataLoader(train, batch_size=32, shuffle=True)
 
     # set up BERT model
     berti = model.Model(vocab_size=VOCAB_SIZE, model_dimension=EMBED_SIZE, pretrained_model=pretrained_model, number_layers=12, number_heads=12)
 
     # number of epochs
-    epochs = 10
+    epochs = 5
 
     # train model (device to be updated according to cluster GPU)
     bert_trainer = training.TrainBERT(berti, train_loader, epochs, device='cpu')
 
-"""
+
 if __name__ == "__main__":
     main()
-"""
+
 
 ##########################################  TEST STUFF  #####################################################
 """
@@ -128,7 +129,7 @@ print(sample_seq)
 bert = embedding.BERTEmbedding(VOCAB_SIZE, SEQ_LEN)
 batch_embed = bert(batch['input'][0].long())
 print(batch_embed.size())
-"""
+
 # Training test
 # set up tokenizer
 tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
@@ -147,5 +148,5 @@ epochs = 5
 
 # train model
 bert_trainer = training.TrainBERT(bert, train_loader, epochs, device='cpu')
-
+"""
 ####################################################################################################
