@@ -28,9 +28,16 @@ class TrainBERT:
         # predictions threshold above which predictions are set True
         self.threshold = threshold 
         
+        # create progress bar
+        self.bar = tqdm(total=len(train_dataloader.dataset), desc=f'Training', position=0)
+
         # run training
         for epoch in range(self.epochs):
             self.training(epoch)
+    
+    def write_results(self, output, file):
+        with open(file, "a") as file:
+            file.write(output)
 
     def training(self, epoch):
         # init stats
@@ -38,14 +45,12 @@ class TrainBERT:
         corrects_sum = 0
         total = 0
         zero_prediction = 0
-        
-        # set back progress bar
-        self.bar = None
-        # create new progress bar
-        self.bar = tqdm(total=len(self.training_data.dataset), desc=f'Training epoch {epoch+1}', leave=True, position=0)
 
         for i, data in enumerate(self.training_data):
             
+            # update progress bar
+            self.bar.update(self.training_data.batch_size)
+
             # send data to GPU/CPU
             data ={key: value.to(self.device) for key, value in data.items()}
             
@@ -72,15 +77,22 @@ class TrainBERT:
             # compare with the label and count correct classifications
             corrects_sum += (predictions == labels).sum().item()
             # check whether model is only predicting 0
-            # zero_prediction += ((predictions == 0) & (labels == 0)).sum().item()
+            zero_prediction += ((predictions == 0) & (labels == 0)).sum().item()
             # sump up total number of labels in batch
             total += labels.nelement()
-            
-            # update progress bar
-            self.bar.update(self.training_data.batch_size)
         
         # update learning rate scheduler
         self.scheduler.step() 
         # print stats
-        print('\Training epoch: {}\nAvg. training loss: {:.2f}\nAccuracy: {:.2f}'.format(epoch+1, avg_loss / len(self.training_data), corrects_sum * 100.0 / total))
- 
+        output ="\nTraining epoch: {}\nAvg. training loss: {:.2f}\nAccuracy: {:.2f}\nCorrect predictions: {} of which the model predicted 'False': {}".format(epoch+1, avg_loss / len(self.training_data), corrects_sum * 100.0 / total, corrects_sum, zero_prediction)
+        print(output)
+
+        # write in results
+        self.write_results(output, "training_results")
+
+        # reset progress bar
+        self.bar.n = 0
+        self.bar.last_print_n = 0
+        self.bar.refresh()
+
+

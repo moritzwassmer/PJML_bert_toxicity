@@ -184,11 +184,11 @@ class BERTBase(nn.Module):
         
         # stack encoders
         self.encoders = torch.nn.ModuleList() # create empty module list
-        for _ in range(self.number_layers):
+        for i in range(self.number_layers):
             self.encoders.append(Encoder(model_dimension=model_dimension, number_heads=number_heads, ff_hidden_dim=4*model_dimension))
         
         # apply the pretrained weights to the layers of the encoders
-        for i in range(number_layers):
+        for i in range(self.number_layers):
             self.encoders[i].load_state_dict(pretrained_model.encoder.layer[i].state_dict(), strict=False)
         
         
@@ -211,11 +211,12 @@ class ToxicityPrediction(nn.Module):
         super().__init__()
         self.tox_classes = 6 # there are 6 classes of toxicity in the dataset
         self.linear = nn.Linear(bert_out, self.tox_classes)
-        self.softmax = nn.LogSoftmax(dim=-1) 
+        # multilabel classification taks output is probiability of beloning to a class for each component of the output vector seperately 
+        self.sigmoid = nn.Sigmoid()
         
     def forward(self, x):
         # recieve output dimension (batch_size, self.tox_classes)
-        return self.softmax(self.linear(x[:, 0]))
+        return self.sigmoid(self.linear(x[:, 0]))
 
 
 # TASK SHEET: model class    
