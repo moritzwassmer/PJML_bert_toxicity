@@ -136,12 +136,12 @@ class FeedForwardLayer(nn.Module):
     # encoder stacks together all the previous modules
 class Encoder(nn.Module):
     """
-    Puts together an encoder from: MultiHeadAttention + feedforward layer + normalization layer
+    Puts together an encoder out of: MultiHeadAttention + feedforward layer + normalization layer
 
     Args: 
         model_dimension (int): Input dimension (default: EMBED_SIZE)
-        number_heads (int): Number of attention heads (default: 12).
-        ff_hidden_dim (int): Dimension of hidden layer in feedforward (default: EMBED_SIZE*4).
+        number_heads (int): Number of attention heads (default: 12)
+        ff_hidden_dim (int): Dimension of hidden layer in feedforward (default: EMBED_SIZE*4)
 
     """
     def __init__(self, model_dimension=EMBED_SIZE, number_heads=12, ff_hidden_dim=EMBED_SIZE*4):
@@ -158,11 +158,11 @@ class Encoder(nn.Module):
         Forward pass through Encoder 
 
         Args:
-            x (torch.Tensor): Input tensor.
+            x (torch.Tensor): Input tensor
             mask (torch.Tensor): Mask padded tokens
 
         Returns:
-            torch.Tensor: Output of encoder.
+            torch.Tensor: Output of encoder
         """
         # input x 3x to generate query, key, value
         x = self.normlayer(self.multihead_attention(x, x, x, mask))
@@ -171,13 +171,23 @@ class Encoder(nn.Module):
 
     # base class for BERT
 class BERTBase(nn.Module):
-    # __init__ function takes hyperparameters, initializes the model accordingly and sets up trainable parameters
+    """
+    Class that comprises a number of encoders stacked as a pipline, can apply pretrained weights to the encoders
+
+    Args: 
+        model_dimension (int): Input dimension 
+        number_layers (int): number of encoder layers in the model
+        number_heads (int): Number of attention heads 
+        ff_hidden_dim (int): Dimension of hidden layer in feedforward 
+        embedding (BERTEmbedding): embedding used for the input
+
+    """
     def __init__(self, vocab_size, model_dimension, pretrained_model, number_layers, number_heads):
         super().__init__()
         self.model_dimension=model_dimension
         self.number_layers=number_layers
         self.number_heads=number_heads
-        # hidden layer dimenion of FF is 4*model_dimension (see paper)
+        # hidden layer dimenion of FF is 4*model_dimension 
         self.ff_hidden_layer = 4*model_dimension
         # embedding of input 
         self.embedding = embedding.BERTEmbedding(vocab_size=vocab_size, seq_len=SEQ_LEN, embed_size=model_dimension)

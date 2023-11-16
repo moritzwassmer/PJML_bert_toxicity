@@ -15,7 +15,7 @@ import training
 tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")  # Choose an appropriate tokenizer
 
 # dataset
-toxic_dataset = load_dataset("jigsaw_toxicity_pred", data_dir=TOXIC)
+toxic_dataset = load_dataset("jigsaw_toxicitpipy_pred", data_dir=TOXIC)
 dataset_length = len(toxic_dataset["train"])
 
 # Download pretrained weights from huggingface (for the base BERT)
@@ -63,17 +63,17 @@ def main():
     # Training (for cluster)
 
     # load the entire training data (length dataset_length) into train
-    # train, _ = load_data("jigsaw_toxicity_pred", transformation=tokenizer, n_train=dataset_length, n_test=None)
-    train, _ = load_data("jigsaw_toxicity_pred", transformation=tokenizer, n_train=128, n_test=None)
+    train, _ = load_data("jigsaw_toxicity_pred", transformation=tokenizer, n_train=dataset_length, n_test=None)
+    # train, _ = load_data("jigsaw_toxicity_pred", transformation=tokenizer, n_train=128, n_test=None)
 
     # set up dataloader
-    train_loader = DataLoader(train, batch_size=32, shuffle=True)
+    train_loader = DataLoader(train, batch_size=128, shuffle=True)
 
     # set up BERT model
     berti = model.Model(vocab_size=VOCAB_SIZE, model_dimension=EMBED_SIZE, pretrained_model=pretrained_model, number_layers=12, number_heads=12)
 
     # number of epochs
-    epochs = 5
+    epochs = 10
 
     # train model (device to be updated according to cluster GPU)
     bert_trainer = training.TrainBERT(berti, train_loader, epochs, device='cpu')
