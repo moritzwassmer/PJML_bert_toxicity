@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 from transformers import BertTokenizer
 from transformers import BertModel, BertConfig
 
-import customdataset
+import custom_datasets
 import embedding 
 import model
 from params import *
@@ -33,14 +33,14 @@ def load_data(dataset:str, transformation=None, n_train:int=None, n_test:int=Non
     """
     
     if dataset == "jigsaw_toxicity_pred":
-        train = customdataset.ToxicComment(
+        train = custom_datasets.ToxicComment(
             tokenizer=transformation,
             seq_len=SEQ_LEN,
             split="train",
             n_rows=n_train
         )
         
-        test = customdataset.ToxicComment(
+        test = custom_datasets.ToxicComment(
             tokenizer=transformation,
             seq_len=SEQ_LEN,
             split="test",
