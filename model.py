@@ -17,9 +17,9 @@ class MultiHeadAttention(nn.Module):
     Attributes:
         number_heads (int): Total number of attention heads
         att_head_dim (int): Input dimension of each attention head
-        query (nn.Linear): Query layer for Attention
-        key (nn.Linear): Key layer for Attention
-        value (nn.Linear): Value layer for Attention
+        Q (nn.Linear): Query layer for Attention
+        K (nn.Linear): Key layer for Attention
+        V (nn.Linear): Value layer for Attention
         lin_output (nn.Linear): Linear layer for the output of Attention
     """
     def __init__(self, number_heads, model_dimension):
@@ -37,9 +37,9 @@ class MultiHeadAttention(nn.Module):
         self.att_head_dim = int(model_dimension/number_heads)
         
         # attention mechanism: Q, K, V are linear embeddings -> embedding matrix dim: (model_dimension x model_dimension)
-        self.query = nn.Linear(model_dimension, model_dimension)
-        self.key = nn.Linear(model_dimension, model_dimension)
-        self.value = nn.Linear(model_dimension, model_dimension)
+        self.Q = nn.Linear(model_dimension, model_dimension)
+        self.K = nn.Linear(model_dimension, model_dimension)
+        self.V = nn.Linear(model_dimension, model_dimension)
         self.lin_output = nn.Linear(model_dimension, model_dimension)
     
     def forward(self, Q, K, V, mask):
@@ -47,26 +47,41 @@ class MultiHeadAttention(nn.Module):
         Forward pass trough MultiHeadAttention
 
         Args: 
-            Q (torch.Tensor): Input for query
-            K (torch.Tensor): Input for key
-            V (torch.Tensor): Input for value
+            Q (torch.Tensor): Input for Q
+            K (torch.Tensor): Input for K
+            V (torch.Tensor): Input for V
             mask (torch.Tensor): Mask for the padded tokens
         
         Returns:
             torch.Tensor: Weighted embedding of input after multi-head Attention
         """
 
-        Q = self.query(Q) #(batch_size x seq_len x model_dimension)
+        def fit_attention_head(t, number_heads, att_head_dim):
+            """
+            (batch_size x seq_len x model_dimension)
+            to
+            (batch_size x number_heads x seq_len x att_head_dim)
+            """
+            t = t.view(t.shape[0], number_heads, t.shape[1], att_head_dim)
+            t = t.transpose(2, 3)
+            return t
+
+        Q = fit_attention_head(self.Q(Q), self.number_heads, self.att_head_dim)
+        K = fit_attention_head(self.K(K), self.number_heads, self.att_head_dim)
+        V = fit_attention_head(self.V(V), self.number_heads, self.att_head_dim)
+        """
+
+        Q = self.Q(Q) #(batch_size x seq_len x model_dimension)
         Q = Q.view(Q.shape[0], self.number_heads, Q.shape[1], self.att_head_dim)
         Q = torch.transpose(Q, 2, 3) #(batch_size x number_heads x seq_len x att_head_dim)
 
-        K = self.key(K)
+        K = self.K(K)
         K = K.view(K.shape[0], self.number_heads, K.shape[1], self.att_head_dim)
         K = torch.transpose(K, 2, 3)
 
-        V = self.value(V)
+        V = self.V(V)
         V = V.view(V.shape[0], self.number_heads, V.shape[1], self.att_head_dim)
-        V = torch.transpose(V, 2, 3)
+        V = torch.transpose(V, 2, 3)"""
 
         # calculate dot product between each Q and each K and normaliz the output, output dim: (batch_size x number_heads x seq_len x seq_len)
         score = torch.matmul(Q, K.permute(0, 1, 3, 2))
