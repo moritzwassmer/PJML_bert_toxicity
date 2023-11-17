@@ -63,16 +63,13 @@ def main():
     # train, _ = load_data("jigsaw_toxicity_pred", transformation=tokenizer, n_train=128, n_test=None)
 
     # set up dataloader
-    train_loader = DataLoader(train, batch_size=512, shuffle=True)
+    train_loader = DataLoader(train, batch_size=BATCH_SIZE, shuffle=True)
 
     # set up BERT model
     berti = model.Model(vocab_size=VOCAB_SIZE, model_dimension=EMBED_SIZE, pretrained_model=pretrained_model, number_layers=12, number_heads=12)
 
-    # number of epochs
-    epochs = 10
-
     # train model (device to be updated according to cluster GPU)
-    bert_trainer = training.TrainBERT(berti, train_loader, epochs, device='cpu')
+    bert_trainer = training.TrainBERT(berti, train_loader, EPOCHS, device=DEVICE)
 
 
 if __name__ == "__main__":
