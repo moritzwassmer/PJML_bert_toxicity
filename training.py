@@ -7,7 +7,7 @@ from tqdm import tqdm
 from params import *
 
 class TrainBERT:
-    def __init__(self, model, train_dataloader, epochs, test_dataloader=None, learning_rate=0.001, threshold=0.5, device='cuda'):
+    def __init__(self, model, train_dataloader, epochs, test_dataloader=None, learning_rate=0.001, threshold=0.5, device=DEVICE):
         
         # hyperparameters for optimization
         self.device = device

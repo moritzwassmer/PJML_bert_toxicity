@@ -28,15 +28,15 @@ class PositionEmbedding(torch.nn.Module):
     
 
 class BERTEmbedding(torch.nn.Module):
-    def __init__(self, vocab_size, seq_len, embed_size=EMBED_SIZE, dropout=DROPOUT):
+    def __init__(self, vocab_size, seq_len, embed_size=EMBED_SIZE):
         super().__init__()
         # token embedding: transforms (vocabulary size, number of tokens) into (vocabulary size, number of tokens, length of embdding vector)
         self.token = nn.Embedding(vocab_size, embed_size, padding_idx=0) # padding remains 0 during training
         # embedding of position
         self.position = PositionEmbedding(embed_size, seq_len) 
-        # droput probability per token
-        self.dropout = nn.Dropout(p=dropout)
         
     def forward(self, sequence):
-        return self.dropout(self.token(sequence) + self.position(sequence))        
+        # send to device
+        print(f'embedding is on {sequence.device}')
+        return self.token(sequence) + self.position(sequence)    
     

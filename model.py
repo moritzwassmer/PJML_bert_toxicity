@@ -191,16 +191,14 @@ class BERTBase(nn.Module):
         self.ff_hidden_layer = 4*model_dimension
         # embedding of input 
         self.embedding = embedding.BERTEmbedding(vocab_size=vocab_size, seq_len=SEQ_LEN, embed_size=model_dimension)
+
         
-        # stack encoders
+        # stack encoders and apply the pretrained weights to the layers of the encoders
         self.encoders = torch.nn.ModuleList() # create empty module list
         for i in range(self.number_layers):
-            self.encoders.append(Encoder(model_dimension=model_dimension, number_heads=number_heads, ff_hidden_dim=4*model_dimension))
-        
-        # apply the pretrained weights to the layers of the encoders
-        for i in range(self.number_layers):
-            self.encoders[i].load_state_dict(pretrained_model.encoder.layer[i].state_dict(), strict=False)
-        
+            encoder = Encoder(model_dimension=model_dimension, number_heads=number_heads, ff_hidden_dim=4*model_dimension)
+            encoder.load_state_dict(pretrained_model.encoder.layer[i].state_dict(), strict=False)
+            self.encoders.append(encoder)
         
     def forward(self, x):
         # mask to mark the padded (0) tokens
