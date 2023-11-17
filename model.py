@@ -36,50 +36,50 @@ class MultiHeadAttention(nn.Module):
         self.number_heads = number_heads
         self.att_head_dim = int(model_dimension/number_heads)
         
-        # attention mechanism: query, key, value are linear embeddings -> embedding matrix dim: (model_dimension x model_dimension)
+        # attention mechanism: Q, K, V are linear embeddings -> embedding matrix dim: (model_dimension x model_dimension)
         self.query = nn.Linear(model_dimension, model_dimension)
         self.key = nn.Linear(model_dimension, model_dimension)
         self.value = nn.Linear(model_dimension, model_dimension)
         self.lin_output = nn.Linear(model_dimension, model_dimension)
     
-    def forward(self, query, key, value, mask):
+    def forward(self, Q, K, V, mask):
         """
         Forward pass trough MultiHeadAttention
 
         Args: 
-            query (torch.Tensor): Input for query
-            key (torch.Tensor): Input for key
-            value (torch.Tensor): Input for value
+            Q (torch.Tensor): Input for query
+            K (torch.Tensor): Input for key
+            V (torch.Tensor): Input for value
             mask (torch.Tensor): Mask for the padded tokens
         
         Returns:
             torch.Tensor: Weighted embedding of input after multi-head Attention
         """
-        # output dim (batch_size x seq_len x model_dimension) 
-        query = self.query(query)
-        key = self.key(key)        
-        value = self.value(value) 
-        
-        # transform q,k,v to fit attention heads:(batch_size x seq_len x model_dimension) -> (batch_size x number_heads x seq_len x att_head_dim)
-        query = query.view(query.shape[0], query.shape[1], self.number_heads, self.att_head_dim)
-        query = query.permute(0,2,1,3)
-        key = key.view(key.shape[0], key.shape[1], self.number_heads, self.att_head_dim)
-        key = key.permute(0,2,1,3)
-        value = value.view(value.shape[0], value.shape[1], self.number_heads, self.att_head_dim)
-        value = value.permute(0,2,1,3)
-        
-        # calculate dot product between each query and each key and normaliz the output, output dim: (batch_size x number_heads x seq_len x seq_len)
-        score = torch.matmul(query, key.permute(0, 1, 3, 2)) 
+
+        Q = self.query(Q) #(batch_size x seq_len x model_dimension)
+        Q = Q.view(Q.shape[0], self.number_heads, Q.shape[1], self.att_head_dim)
+        Q = torch.transpose(Q, 2, 3) #(batch_size x number_heads x seq_len x att_head_dim)
+
+        K = self.key(K)
+        K = K.view(K.shape[0], self.number_heads, K.shape[1], self.att_head_dim)
+        K = torch.transpose(K, 2, 3)
+
+        V = self.value(V)
+        V = V.view(V.shape[0], self.number_heads, V.shape[1], self.att_head_dim)
+        V = torch.transpose(V, 2, 3)
+
+        # calculate dot product between each Q and each K and normaliz the output, output dim: (batch_size x number_heads x seq_len x seq_len)
+        score = torch.matmul(Q, K.permute(0, 1, 3, 2))
         score_n = score / math.sqrt(self.att_head_dim) # normalize: <q,k>/sqrt(d_k)
         
         # mask 0 with -infinity so it becomes 0 after softmax, output dim: (batch_size x number_heads x seq_len x seq_len)
         score_m = score_n.masked_fill(mask == 0, -10000000000)    
         
-        # softmax scores along each query, output dim: (batch_size x number_heads x seq_len x seq_len)
+        # softmax scores along each Q, output dim: (batch_size x number_heads x seq_len x seq_len)
         score_w = nn.functional.softmax(score_m, dim=-1) 
         
-        # multiply with value matrix: output weighted sum for each query, output dim: (batch_size x number_heads x seq_len x att_head_dim)
-        weighted_sum = torch.matmul(score_w, value)
+        # multiply with V matrix: output weighted sum for each Q, output dim: (batch_size x number_heads x seq_len x att_head_dim)
+        weighted_sum = torch.matmul(score_w, V)
         
         # concatenate attention heads to 1 output, output dim: (batch_size x seq_len x model_dimension)
         weighted_sum = weighted_sum.permute(0, 2, 1, 3).reshape(weighted_sum.shape[0], -1, self.number_heads * self.att_head_dim)
@@ -164,7 +164,7 @@ class Encoder(nn.Module):
         Returns:
             torch.Tensor: Output of encoder
         """
-        # input x 3x to generate query, key, value
+        # input x 3x to generate Q, K, V
         x = self.normlayer(self.multihead_attention(x, x, x, mask))
         return self.normlayer(self.feedforward_layer(x))
     
