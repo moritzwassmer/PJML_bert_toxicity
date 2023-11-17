@@ -72,7 +72,7 @@ def main():
     epochs = 10
 
     # train model (device to be updated according to cluster GPU)
-    bert_trainer = training.TrainBERT(berti, train_loader, epochs, device=DEVICE)
+    bert_trainer = training.TrainBERT(berti, train_loader, epochs, device='cpu')
 
 
 if __name__ == "__main__":

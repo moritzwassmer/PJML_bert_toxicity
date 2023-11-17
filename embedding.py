@@ -5,11 +5,11 @@ import torch.nn as nn
 from params import *
 
 class PositionEmbedding(torch.nn.Module):
-    def __init__(self, embed_size, seq_len):
+    def __init__(self, embed_size, seq_len, device=DEVICE):
         super().__init__()
         n = 10000 # scalar for pos encoding
         # create embedding matrix dim(seq_len  x embed_size)
-        self.embed_matrix = torch.zeros(seq_len, embed_size).float()
+        self.embed_matrix = torch.zeros(seq_len, embed_size, device=device).float()
         # positional encoding not to be updated while gradient descent
         self.embed_matrix.require_grad = False
         
@@ -28,15 +28,13 @@ class PositionEmbedding(torch.nn.Module):
     
 
 class BERTEmbedding(torch.nn.Module):
-    def __init__(self, vocab_size, seq_len, embed_size=EMBED_SIZE):
+    def __init__(self, vocab_size, seq_len, embed_size=EMBED_SIZE, device=DEVICE):
         super().__init__()
         # token embedding: transforms (vocabulary size, number of tokens) into (vocabulary size, number of tokens, length of embdding vector)
-        self.token = nn.Embedding(vocab_size, embed_size, padding_idx=0) # padding remains 0 during training
+        self.token = nn.Embedding(vocab_size, embed_size, padding_idx=0).to(device) # padding remains 0 during training
         # embedding of position
-        self.position = PositionEmbedding(embed_size, seq_len) 
+        self.position = PositionEmbedding(embed_size, seq_len)
         
     def forward(self, sequence):
-        # send to device
-        print(f'embedding is on {sequence.device}')
         return self.token(sequence) + self.position(sequence)    
     

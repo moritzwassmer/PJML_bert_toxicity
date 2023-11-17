@@ -17,6 +17,9 @@ class TrainBERT:
         self.training_data = train_dataloader
         self.testing_data = test_dataloader
 
+        # model to device
+        self.model.to(self.device)
+
         # optimizer: Adam
         self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
         # learning rate scheduler
