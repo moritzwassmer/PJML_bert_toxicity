@@ -5,6 +5,8 @@ import torch.nn as nn
 from params import *
 import embedding
 
+import numpy as np
+
 # attention heads
 class MultiHeadAttention(nn.Module):
     """
@@ -88,7 +90,7 @@ class MultiHeadAttention(nn.Module):
         score_n = score / math.sqrt(self.att_head_dim) # normalize: <q,k>/sqrt(d_k)
         
         # mask 0 with -infinity so it becomes 0 after softmax, output dim: (batch_size x number_heads x seq_len x seq_len)
-        score_m = score_n.masked_fill(mask == 0, -10000000000)    
+        score_m = score_n.masked_fill(mask == 0, -np.inf)
         
         # softmax scores along each Q, output dim: (batch_size x number_heads x seq_len x seq_len)
         score_w = nn.functional.softmax(score_m, dim=-1) 
