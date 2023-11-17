@@ -24,7 +24,7 @@ class MultiHeadAttention(nn.Module):
         V (nn.Linear): Value layer for Attention
         lin_output (nn.Linear): Linear layer for the output of Attention
     """
-    def __init__(self, number_heads, model_dimension):
+    def __init__(self,  number_heads, model_dimension, batch_size = BATCH_SIZE, seq_len = SEQ_LEN):
         """
         Initializing MultiHeadAttention
 
@@ -33,6 +33,9 @@ class MultiHeadAttention(nn.Module):
             model_dimension (int): Input dimension of the model
         """
         super(MultiHeadAttention, self).__init__()
+
+        self.batch_size = batch_size
+        self.seq_len = seq_len
         
         # model dimension must be divideable into equal parts for the attention heads
         self.number_heads = number_heads
@@ -64,7 +67,7 @@ class MultiHeadAttention(nn.Module):
             to
             (batch_size x number_heads x seq_len x att_head_dim)
             """
-            t = t.view(t.shape[0], number_heads, t.shape[1], att_head_dim)
+            t = t.view(self.batch_size, number_heads, self.seq_len, att_head_dim)
             t = t.transpose(2, 3)
             return t
 
@@ -86,11 +89,11 @@ class MultiHeadAttention(nn.Module):
         V = torch.transpose(V, 2, 3)"""
 
         # calculate dot product between each Q and each K and normaliz the output, output dim: (batch_size x number_heads x seq_len x seq_len)
-        score = torch.matmul(Q, K.permute(0, 1, 3, 2))
+        score = torch.matmul(Q, K.transpose(2,3))
         score_n = score / math.sqrt(self.att_head_dim) # normalize: <q,k>/sqrt(d_k)
         
         # mask 0 with -infinity so it becomes 0 after softmax, output dim: (batch_size x number_heads x seq_len x seq_len)
-        score_m = score_n.masked_fill(mask == 0, -np.inf)
+        score_m = score_n.masked_fill(mask == 0, -np.inf) # TODO could remove, we dont do pretraining
         
         # softmax scores along each Q, output dim: (batch_size x number_heads x seq_len x seq_len)
         score_w = nn.functional.softmax(score_m, dim=-1) 
@@ -99,7 +102,7 @@ class MultiHeadAttention(nn.Module):
         weighted_sum = torch.matmul(score_w, V)
         
         # concatenate attention heads to 1 output, output dim: (batch_size x seq_len x model_dimension)
-        weighted_sum = weighted_sum.permute(0, 2, 1, 3).reshape(weighted_sum.shape[0], -1, self.number_heads * self.att_head_dim)
+        weighted_sum = weighted_sum.transpose(2, 3).reshape(self.batch_size, -1, self.number_heads * self.att_head_dim)
         
         # linear embedding for output, output dim: (batch_size x seq_len x model_dimension)
         out = self.lin_output(weighted_sum)      
@@ -161,7 +164,7 @@ class Encoder(nn.Module):
         ff_hidden_dim (int): Dimension of hidden layer in feedforward (default: EMBED_SIZE*4)
 
     """
-    def __init__(self, model_dimension=EMBED_SIZE, number_heads=12, ff_hidden_dim=EMBED_SIZE*4):
+    def __init__(self,  model_dimension=EMBED_SIZE, number_heads=12, ff_hidden_dim=EMBED_SIZE*4):
         super(Encoder, self).__init__()
         # attention heads
         self.multihead_attention = MultiHeadAttention (number_heads, model_dimension)
@@ -230,6 +233,8 @@ class BERTBase(nn.Module):
     # finetuning
 class ToxicityPrediction(nn.Module):
     """
+    Task specific head for Toxicity classification
+
     class to predict multivariate class of toxicity
     """
     def __init__(self, bert_out):
