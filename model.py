@@ -63,9 +63,18 @@ class MultiHeadAttention(nn.Module):
 
         def fit_attention_head(t, number_heads, att_head_dim):
             """
-            (batch_size x seq_len x model_dimension)
+            Transform from (batch_size x seq_len x model_dimension)
             to
             (batch_size x number_heads x seq_len x att_head_dim)
+
+            Args:
+                t (torch.Tensor): Input tensor.
+                number_heads (int): Number of attention heads.
+                att_head_dim (int): Dimension of each attention head.
+
+            Returns:
+                torch.Tensor: Reshaped tensor.
+
             """
             t = t.view(self.batch_size, number_heads, self.seq_len, att_head_dim)
             t = t.transpose(2, 3)
@@ -74,26 +83,13 @@ class MultiHeadAttention(nn.Module):
         Q = fit_attention_head(self.Q(Q), self.number_heads, self.att_head_dim)
         K = fit_attention_head(self.K(K), self.number_heads, self.att_head_dim)
         V = fit_attention_head(self.V(V), self.number_heads, self.att_head_dim)
-        """
-
-        Q = self.Q(Q) #(batch_size x seq_len x model_dimension)
-        Q = Q.view(Q.shape[0], self.number_heads, Q.shape[1], self.att_head_dim)
-        Q = torch.transpose(Q, 2, 3) #(batch_size x number_heads x seq_len x att_head_dim)
-
-        K = self.K(K)
-        K = K.view(K.shape[0], self.number_heads, K.shape[1], self.att_head_dim)
-        K = torch.transpose(K, 2, 3)
-
-        V = self.V(V)
-        V = V.view(V.shape[0], self.number_heads, V.shape[1], self.att_head_dim)
-        V = torch.transpose(V, 2, 3)"""
 
         # calculate dot product between each Q and each K and normaliz the output, output dim: (batch_size x number_heads x seq_len x seq_len)
         score = torch.matmul(Q, K.transpose(2,3))
         score_n = score / math.sqrt(self.att_head_dim) # normalize: <q,k>/sqrt(d_k)
         
         # mask 0 with -infinity so it becomes 0 after softmax, output dim: (batch_size x number_heads x seq_len x seq_len)
-        score_m = score_n.masked_fill(mask == 0, -np.inf) # TODO could remove, we dont do pretraining
+        score_m = score_n.masked_fill(mask == 0, -np.inf) # -> DELETE COMMENT: this is not for the pretraining masks but the padded tokens, they are 0 (see line 253)
         
         # softmax scores along each Q, output dim: (batch_size x number_heads x seq_len x seq_len)
         score_w = nn.functional.softmax(score_m, dim=-1) 
@@ -172,7 +168,6 @@ class Encoder(nn.Module):
         self.normlayer = nn.LayerNorm(model_dimension)
         self.feedforward_layer = FeedForwardLayer(model_dimension, hidden_dimension=ff_hidden_dim)
     
-    # also residuals possible here
     def forward(self, x, mask):
         """
         Forward pass through Encoder 
@@ -192,17 +187,41 @@ class Encoder(nn.Module):
     # base class for BERT
 class BERTBase(nn.Module):
     """
-    Class that comprises a number of encoders stacked as a pipline, can apply pretrained weights to the encoders
+    Base class for BERT model
 
-    Args: 
-        model_dimension (int): Input dimension 
-        number_layers (int): number of encoder layers in the model
-        number_heads (int): Number of attention heads 
-        ff_hidden_dim (int): Dimension of hidden layer in feedforward 
-        embedding (BERTEmbedding): embedding used for the input
+    Args:
+        vocab_size (int): size of the vocabulary
+        model_dimension (int): dimensionality of the model
+        pretrained_model (str): path of the pretrained model
+        number_layers (int): number of transformer layers
+        number_heads (int): number of attention heads
 
+    Attributes:
+        model_dimension (int): dimensionality of the model
+        number_layers (int): number of transformer layers
+        number_heads (int): number of attention heads
+        ff_hidden_layer (int): hidden layer dimension of the feedforward network (4 * model_dimension)
+        embedding (BERTEmbedding): BERT embedding layer 
+        encoders (torch.nn.ModuleList): list of encoder modules
     """
     def __init__(self, vocab_size, model_dimension, pretrained_model, number_layers, number_heads):
+        """
+        Initializes a the BERTBase model
+
+        Parameters:
+            vocab_size (int): size of the vocabulary
+            model_dimension (int): model dimension
+            pretrained_model (str): path of the pretrained model
+            number_layers (int): number of transformer layers
+            number_heads (int): number of attention heads
+
+        Attributes:
+            model_dimension (int): dimensionality of the model
+            number_layers (int): number of transformer layers
+            number_heads (int): number of attention heads
+            ff_hidden_layer (int): hidden layer dimension of feedforward module (4 * model_dimension)
+            embedding (BERTEmbedding): BERT embedding 
+        """
         super().__init__()
         self.model_dimension=model_dimension
         self.number_layers=number_layers
@@ -221,6 +240,15 @@ class BERTBase(nn.Module):
             self.encoders.append(encoder)
         
     def forward(self, x):
+        """
+        Forward pass of the BERTBase model
+
+        Parameters:
+            x (torch.Tensor): Input tensor
+
+        Returns:
+            torch.Tensor: Output tensor
+        """
         # mask to mark the padded (0) tokens
         mask = (x > 0).unsqueeze(1).repeat(1,x.size(1),1).unsqueeze(1)
         x = self.embedding(x) 
@@ -233,11 +261,30 @@ class BERTBase(nn.Module):
     # finetuning
 class ToxicityPrediction(nn.Module):
     """
-    Task specific head for Toxicity classification
+    Head for toxicity classification
 
-    class to predict multivariate class of toxicity
+    Args:
+        bert_out (int): Dimension of the BERT base model output
+
+    Attributes:
+        tox_classes (int): Number of toxicity classes 
+        linear (nn.Linear): Linear layer for classification
+        sigmoid (nn.Sigmoid): Sigmoid activation for multi-label classification
+
     """
     def __init__(self, bert_out):
+        """
+        Initializes the ToxicityPrediction model
+
+        Parameters:
+            bert_out (int): dimension of the BERT output
+
+        Attributes:
+            tox_classes (int): number of toxicity classes 
+            linear (nn.Linear): linear layer for classification
+            sigmoid (nn.Sigmoid): sigmoid activation for multi-label classification
+
+        """
         super().__init__()
         self.tox_classes = 6 # there are 6 classes of toxicity in the dataset
         self.linear = nn.Linear(bert_out, self.tox_classes)
@@ -245,6 +292,16 @@ class ToxicityPrediction(nn.Module):
         self.sigmoid = nn.Sigmoid()
         
     def forward(self, x):
+        """
+        Forward pass of ToxicityPrediction 
+
+        Parameters:
+            x (torch.Tensor): input tensor
+
+        Returns:
+            torch.Tensor: output tensor
+
+        """
         # recieve output dimension (batch_size, self.tox_classes)
         return self.sigmoid(self.linear(x[:, 0]))
 
@@ -252,9 +309,36 @@ class ToxicityPrediction(nn.Module):
 # TASK SHEET: model class    
 class Model(nn.Module):
     """
-    Model class according to Milestone 1 task sheet
+    BERT-based Model for Toxic Comment Classification, consists of a base BERT model for feature extraction and a task-specific head for toxic comment classification
+
+    Args:
+        vocab_size (int): size of the vocabulary
+        model_dimension (int): input dimension for the BERT model
+        pretrained_model (str): path of the pretrained BERT model
+        number_layers (int, optional): number of transformer layers in BERT (default=12)
+        number_heads (int, optional): number of attention heads in BERT (default=12)
+
+    Attributes:
+        base_model (BERTBase): base BERT model 
+        toxic_comment (ToxicityPrediction): head for toxic comment classification
+
     """
     def __init__(self, vocab_size, model_dimension, pretrained_model, number_layers=12, number_heads=12):
+        """
+        Initializes the Model
+
+        Args:
+            vocab_size (int): size of the vocabulary
+            model_dimension (int): input dimension for the BERT model
+            pretrained_model (str): path of the pretrained BERT model
+            number_layers (int, optional): number of transformer layers in BERT (default=12)
+            number_heads (int, optional): number of attention heads in BERT (default=12)
+
+        Attributes:
+            base_model (BERTBase): base BERT model 
+            toxic_comment (ToxicityPrediction): head for toxic comment classification
+
+        """
         super().__init__()
         # base BERT model
         self.base_model = BERTBase(vocab_size, model_dimension, pretrained_model, number_layers, number_heads)
@@ -262,5 +346,15 @@ class Model(nn.Module):
         self.toxic_comment = ToxicityPrediction(self.base_model.model_dimension)
     
     def forward(self, x):
+        """
+        Forward pass of the model
+
+        Args:
+            x (torch.Tensor): input tensor
+
+        Returns:
+            torch.Tensor: output tensor 
+
+        """
         x = self.base_model(x)
         return self.toxic_comment(x)
