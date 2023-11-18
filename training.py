@@ -87,7 +87,7 @@ class TrainBERT:
         # update learning rate scheduler
         self.scheduler.step() 
         # print stats
-        output ="\nTraining epoch: {}\nAvg. training loss: {:.2f}\nAccuracy: {:.2f}\nCorrect predictions: {} of which the model predicted 'False': {}".format(epoch+1, avg_loss / len(self.training_data), corrects_sum * 100.0 / total, corrects_sum, zero_prediction)
+        output ="\nTraining epoch: {}\nAvg. training loss: {:.2f}\nAccuracy: {:.2f}\nCorrect predictions: {} of which the model predicted 'False': {}".format(epoch+1, avg_loss / len(self.training_data), corrects_sum / total, corrects_sum, zero_prediction)
         print(output)
 
         # write in results
