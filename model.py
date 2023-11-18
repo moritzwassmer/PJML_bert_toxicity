@@ -13,24 +13,24 @@ class MultiHeadAttention(nn.Module):
     Module for multi-headed Attention
 
     Args:
-        number_heads (int): The number of attention heads
-        model_dimension (int): Input dimension of the model
+        number_heads (int): number of attention heads
+        model_dimension (int): input dimension of the model
 
     Attributes:
-        number_heads (int): Total number of attention heads
-        att_head_dim (int): Input dimension of each attention head
-        Q (nn.Linear): Query layer for Attention
-        K (nn.Linear): Key layer for Attention
-        V (nn.Linear): Value layer for Attention
-        lin_output (nn.Linear): Linear layer for the output of Attention
+        number_heads (int): total number of attention heads
+        att_head_dim (int): input dimension of each attention head
+        Q (nn.Linear): query layer for Attention
+        K (nn.Linear): key layer for Attention
+        V (nn.Linear): value layer for Attention
+        lin_output (nn.Linear): linear layer for the output of Attention
     """
     def __init__(self,  number_heads, model_dimension, batch_size = BATCH_SIZE, seq_len = SEQ_LEN):
         """
         Initializing MultiHeadAttention
 
         Args:
-            number_heads (int): Total number of attention heads
-            model_dimension (int): Input dimension of the model
+            number_heads (int): total number of attention heads
+            model_dimension (int): input dimension of the model
         """
         super(MultiHeadAttention, self).__init__()
 
@@ -52,13 +52,13 @@ class MultiHeadAttention(nn.Module):
         Forward pass trough MultiHeadAttention
 
         Args: 
-            Q (torch.Tensor): Input for Q
-            K (torch.Tensor): Input for K
-            V (torch.Tensor): Input for V
-            mask (torch.Tensor): Mask for the padded tokens
+            Q (torch.Tensor): query
+            K (torch.Tensor): key
+            V (torch.Tensor): value
+            mask (torch.Tensor): mask for the padded tokens
         
         Returns:
-            torch.Tensor: Weighted embedding of input after multi-head Attention
+            torch.Tensor: weighted embedding of input after multi-head Attention
         """
 
         def fit_attention_head(t, number_heads, att_head_dim):
@@ -68,12 +68,12 @@ class MultiHeadAttention(nn.Module):
             (batch_size x number_heads x seq_len x att_head_dim)
 
             Args:
-                t (torch.Tensor): Input tensor.
-                number_heads (int): Number of attention heads.
-                att_head_dim (int): Dimension of each attention head.
+                t (torch.Tensor): input tensor
+                number_heads (int): number of attention heads
+                att_head_dim (int): dimension of each attention head
 
             Returns:
-                torch.Tensor: Reshaped tensor.
+                torch.Tensor: reshaped tensor
 
             """
             t = t.view(self.batch_size, number_heads, self.seq_len, att_head_dim)
@@ -111,21 +111,21 @@ class FeedForwardLayer(nn.Module):
     Module for a feedforward layer
 
     Args:
-        model_dimension (int): Dimension of input vector
-        hidden_dimension (int): Dimension of the hidden layer
+        model_dimension (int): dimension of input vector
+        hidden_dimension (int): dimension of the hidden layer
 
     Attributes:
-        linear1 (nn.Linear): Transforms to hidden layer linearly
-        linear2 (nn.Linear): Transforms from hidden layer to output linearly
-        non_linear (nn.ReLU): Non-linear layer in the middle
+        linear1 (nn.Linear): transforms to hidden layer linearly
+        linear2 (nn.Linear): transforms from hidden layer to output linearly
+        non_linear (nn.ReLU): non-linear layer in the middle
     """
     def __init__(self, model_dimension, hidden_dimension):
         """
         Initializing FeedForwardLayer
 
         Args:
-            model_dimension (int): Dimension of input vector
-            hidden_dimension (int): Dimension of the hidden layer
+            model_dimension (int): dimension of input vector
+            hidden_dimension (int): dimension of the hidden layer
 
         """
         super(FeedForwardLayer, self).__init__()
@@ -141,10 +141,10 @@ class FeedForwardLayer(nn.Module):
         Forward pass trough FeedForwardLayer
 
         Args: 
-            x (torch.Tensor): Input tensor
+            x (torch.Tensor): input tensor
         
         Returns:
-            torch.Tensor: Output of FeedForward layer
+            torch.Tensor: output of FeedForward layer
         """
         return self.linear2(self.non_linear(self.linear1(x)))       
     
@@ -152,12 +152,12 @@ class FeedForwardLayer(nn.Module):
     # encoder stacks together all the previous modules
 class Encoder(nn.Module):
     """
-    Puts together an encoder out of: MultiHeadAttention + feedforward layer + normalization layer
+    Puts together an encoder: MultiHeadAttention + feedforward layer + normalization layer
 
     Args: 
-        model_dimension (int): Input dimension (default: EMBED_SIZE)
-        number_heads (int): Number of attention heads (default: 12)
-        ff_hidden_dim (int): Dimension of hidden layer in feedforward (default: EMBED_SIZE*4)
+        model_dimension (int): input dimension (default: EMBED_SIZE)
+        number_heads (int): number of attention heads (default: 12)
+        ff_hidden_dim (int): dimension of hidden layer in feedforward (default: EMBED_SIZE*4)
 
     """
     def __init__(self,  model_dimension=EMBED_SIZE, number_heads=12, ff_hidden_dim=EMBED_SIZE*4):
@@ -173,11 +173,11 @@ class Encoder(nn.Module):
         Forward pass through Encoder 
 
         Args:
-            x (torch.Tensor): Input tensor
-            mask (torch.Tensor): Mask padded tokens
+            x (torch.Tensor): input tensor
+            mask (torch.Tensor): mask padded tokens
 
         Returns:
-            torch.Tensor: Output of encoder
+            torch.Tensor: output of encoder
         """
         # input x 3x to generate Q, K, V
         x = self.normlayer(self.multihead_attention(x, x, x, mask))
@@ -190,7 +190,7 @@ class BERTBase(nn.Module):
     Base class for BERT model
 
     Args:
-        vocab_size (int): size of the vocabulary
+        vocab_size (int): size of vocabulary
         model_dimension (int): dimensionality of the model
         pretrained_model (str): path of the pretrained model
         number_layers (int): number of transformer layers
@@ -244,10 +244,10 @@ class BERTBase(nn.Module):
         Forward pass of the BERTBase model
 
         Parameters:
-            x (torch.Tensor): Input tensor
+            x (torch.Tensor): input tensor
 
         Returns:
-            torch.Tensor: Output tensor
+            torch.Tensor: output tensor
         """
         # mask to mark the padded (0) tokens
         mask = (x > 0).unsqueeze(1).repeat(1,x.size(1),1).unsqueeze(1)
@@ -264,12 +264,12 @@ class ToxicityPrediction(nn.Module):
     Head for toxicity classification
 
     Args:
-        bert_out (int): Dimension of the BERT base model output
+        bert_out (int): dimension of the BERT base model output
 
     Attributes:
-        tox_classes (int): Number of toxicity classes 
-        linear (nn.Linear): Linear layer for classification
-        sigmoid (nn.Sigmoid): Sigmoid activation for multi-label classification
+        tox_classes (int): number of toxicity classes 
+        linear (nn.Linear): linear layer for classification
+        sigmoid (nn.Sigmoid): sigmoid function for multi-label classification
 
     """
     def __init__(self, bert_out):
@@ -309,12 +309,12 @@ class ToxicityPrediction(nn.Module):
 # TASK SHEET: model class    
 class Model(nn.Module):
     """
-    BERT-based Model for Toxic Comment Classification, consists of a base BERT model for feature extraction and a task-specific head for toxic comment classification
+    BERT-based model for toxic comment classification, consists of a base BERT model for feature extraction and a task-specific head for toxic comment classification
 
     Args:
         vocab_size (int): size of the vocabulary
         model_dimension (int): input dimension for the BERT model
-        pretrained_model (str): path of the pretrained BERT model
+        pretrained_model (str): path of pretrained BERT model
         number_layers (int, optional): number of transformer layers in BERT (default=12)
         number_heads (int, optional): number of attention heads in BERT (default=12)
 
@@ -325,7 +325,7 @@ class Model(nn.Module):
     """
     def __init__(self, vocab_size, model_dimension, pretrained_model, number_layers=12, number_heads=12):
         """
-        Initializes the Model
+        Initializes the model
 
         Args:
             vocab_size (int): size of the vocabulary
