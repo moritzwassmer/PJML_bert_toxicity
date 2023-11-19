@@ -61,7 +61,7 @@ class TrainBERT:
             labels = data['labels'].float()
             
             # forward pass: comments trough model
-            output = self.model.forward(data['input'])
+            output = self.model.forward(data['input'], data["segment"])
             
             # compute loss with labels (input, target)
             loss = self.criterion(output, labels)

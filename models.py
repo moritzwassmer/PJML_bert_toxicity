@@ -6,6 +6,8 @@ from params import *
 
 import numpy as np
 
+from transformers import BertModel, BertConfig # ONLY USED TO GET PRETRAINED WEIGHTS!
+
 
 
 class BERTBase(nn.Module):
@@ -252,18 +254,25 @@ class BERTBase(nn.Module):
             def forward(self,x):
                 return self.pos_embedding
 
-        def __init__(self, vocab_size=VOCAB_SIZE, seq_len=SEQ_LEN, embed_size=EMBED_SIZE, device=DEVICE):
+        def __init__(self, vocab_size=VOCAB_SIZE, seq_len=SEQ_LEN, embed_size=EMBED_SIZE, device=DEVICE, dropout=0.1):
             super().__init__()
             # token embedding: transforms (vocabulary size, number of tokens) into (vocabulary size, number of tokens, length of embdding vector)
             self.token = nn.Embedding(vocab_size, embed_size, padding_idx=0).to( # are we sure padding is 0? -> yes
                 device)  # padding remains 0 during training
             # embedding of position
             self.position = BERTBase.BERTEmbedding.PositionEmbedding(embed_size, seq_len)
+            self.segment = nn.Embedding(3, embed_size, padding_idx=0)
+            self.dropout = torch.nn.Dropout(p=dropout)
 
-        def forward(self, sequence):
-            return self.token(sequence) + self.position(sequence)
+        def forward(self, sequence, segments):
+            print(sequence.dtype)
+            print(segments.dtype)
+            sequence = sequence.to(torch.long)
+            segments = segments.to(torch.long)
+            total_embedding = self.token(sequence) + self.position(sequence) + self.segment(segments)
+            return self.dropout(total_embedding)
 
-    def __init__(self, vocab_size=VOCAB_SIZE, model_dimension=EMBED_SIZE, pretrained_model=None, number_layers=NUMBER_LAYERS, number_heads=NUMBER_HEADS, seq_len=SEQ_LEN):
+    def __init__(self, vocab_size=VOCAB_SIZE, model_dimension=EMBED_SIZE, use_pretrained=True, number_layers=NUMBER_LAYERS, number_heads=NUMBER_HEADS, seq_len=SEQ_LEN):
         """
         Initializes a the BERTBase model
 
@@ -292,16 +301,43 @@ class BERTBase(nn.Module):
         self.seq_len = seq_len
 
         self.embedding = BERTBase.BERTEmbedding(vocab_size=vocab_size, seq_len=seq_len, embed_size=model_dimension)
+        # TODO Init embedding layer
 
-        if pretrained_model is not None:
-            # stack encoders and apply the pretrained weights to the layers of the encoders
-            self.encoders = torch.nn.ModuleList() # create empty module list
-            for i in range(self.number_layers):
-                encoder = BERTBase.Encoder(model_dimension=model_dimension, number_heads=number_heads, ff_hidden_dim=4*model_dimension)
-                encoder.load_state_dict(pretrained_model.encoder.layer[i].state_dict(), strict=False)
-                self.encoders.append(encoder)
+        # INIT ENCODERS
+        self.encoders = torch.nn.ModuleList()  # create empty module list
+        for i in range(self.number_layers):
+            encoder = BERTBase.Encoder(model_dimension=model_dimension, number_heads=number_heads, ff_hidden_dim=4 * model_dimension)
+            self.encoders = self.encoders.append(encoder)
+        #print(self.encoders[0])
 
-    def forward(self, x):
+        # TODO
+        """
+        if use_pretrained:
+            self.load_from_pretrained()
+        """
+
+    def load_from_pretrained(self):
+        # TODO finish
+
+        # Download pretrained weights from huggingface (for the base BERT)
+        bert_base = "bert-base-uncased"
+        configuration = BertConfig.from_pretrained(bert_base)
+        pretrained_model = BertModel.from_pretrained(bert_base, config=configuration)
+
+        # TODO Embedding layers
+        #print(pretrained_model.encoder.layer[0].state_dict())
+        #print(self.encoders[0])
+
+        # stack encoders and apply the pretrained weights to the layers of the encoders
+        self.encoders = torch.nn.ModuleList()  # create empty module list
+        for i in range(self.number_layers):
+            #print(i)
+            pretrained_encoder = pretrained_model.encoder.layer[i].state_dict()
+            encoder = self.encoders[i]
+            encoder = encoder.load_state_dict(pretrained_encoder, strict=False)
+            self.encoders.insert(i,encoder)
+
+    def forward(self, words, segments):
         """
         Forward pass of the BERTBase model
 
@@ -311,12 +347,13 @@ class BERTBase(nn.Module):
         Returns:
             torch.Tensor: output tensor
         """
-        # mask to mark the padded (0) tokens
-        mask = (x > 0).unsqueeze(1).repeat(1,x.size(1),1).unsqueeze(1)
-        x = self.embedding(x) 
+        # mask to mark the padded (0) tokens TODO understood correctly?
+        mask = (words > 0).unsqueeze(1).repeat(1,words.size(1),1).unsqueeze(1) # TODO commented out
+
+        x = self.embedding(words, segments)
         # run trough encoders
         for encoder in self.encoders:
-            x =encoder.forward(x, mask)
+            x = encoder.forward(x, mask)
         return x
     
 
@@ -385,7 +422,7 @@ class Model(nn.Module):
         toxic_comment (ToxicityPredictionHead): head for toxic comment classification
 
     """
-    def __init__(self, vocab_size=VOCAB_SIZE, model_dimension=EMBED_SIZE, pretrained_model=None, number_layers=NUMBER_LAYERS, number_heads=NUMBER_HEADS):
+    def __init__(self, vocab_size=VOCAB_SIZE, model_dimension=EMBED_SIZE, use_pretrained=True, number_layers=NUMBER_LAYERS, number_heads=NUMBER_HEADS):
         """
         Initializes the model
 
@@ -403,11 +440,11 @@ class Model(nn.Module):
         """
         super().__init__()
         # base BERT model
-        self.base_model = BERTBase(vocab_size, model_dimension, pretrained_model, number_layers, number_heads)
+        self.base_model = BERTBase(vocab_size, model_dimension, use_pretrained, number_layers, number_heads)
         # toxic comment classfication layer
         self.toxic_comment = ToxicityPredictionHead(self.base_model.model_dimension)
     
-    def forward(self, x):
+    def forward(self, words, segments):
         """
         Forward pass of the model
 
@@ -418,5 +455,5 @@ class Model(nn.Module):
             torch.Tensor: output tensor 
 
         """
-        x = self.base_model(x)
+        x = self.base_model(words, segments)
         return self.toxic_comment(x)

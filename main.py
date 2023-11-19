@@ -1,6 +1,6 @@
 from torch.utils.data import DataLoader
 from transformers import BertTokenizer
-from transformers import BertModel, BertConfig
+
 
 import custom_datasets
 import models
@@ -10,10 +10,6 @@ import training
 # tokenizer
 tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")  # Choose an appropriate tokenizer
 
-# Download pretrained weights from huggingface (for the base BERT)
-bert_base = "bert-base-uncased"
-configuration = BertConfig.from_pretrained(bert_base)
-pretrained_model = BertModel.from_pretrained(bert_base, config=configuration)
 
 # TASK SHEET: load_data
 def load_data(dataset:str, transformation=None, n_train:int=None, n_test:int=None, batch_size=BATCH_SIZE, shuffle=True): # transformation callable
@@ -86,7 +82,7 @@ def main():
     # train, _ = load_data("jigsaw_toxicity_pred", transformation=tokenizer, n_train=128, n_test=None)
 
     # set up BERT model with toxic multilabel classification head
-    berti = models.Model(vocab_size=VOCAB_SIZE, model_dimension=EMBED_SIZE, pretrained_model=pretrained_model, number_layers=NUMBER_LAYERS, number_heads=NUMBER_HEADS)
+    berti = models.Model(vocab_size=VOCAB_SIZE, model_dimension=EMBED_SIZE, use_pretrained=True, number_layers=NUMBER_LAYERS, number_heads=NUMBER_HEADS)
 
     # train model (device to be updated according to cluster GPU)
     training.TrainBERT(berti, train_loader, EPOCHS, device=DEVICE)
