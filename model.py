@@ -29,7 +29,6 @@ class BERTBase(nn.Module):
         encoders (torch.nn.ModuleList): list of encoder modules
     """
 
-    # attention heads
     class MultiHeadAttention(nn.Module):
         """
         Module for multi-headed Attention
@@ -47,7 +46,7 @@ class BERTBase(nn.Module):
             lin_output (nn.Linear): linear layer for the output of Attention
         """
 
-        def __init__(self, number_heads, model_dimension, batch_size, seq_len):
+        def __init__(self, number_heads, model_dimension, seq_len):
             """
             Initializing MultiHeadAttention
 
@@ -57,7 +56,6 @@ class BERTBase(nn.Module):
             """
             super(BERTBase.MultiHeadAttention, self).__init__()
 
-            self.batch_size = batch_size
             self.seq_len = seq_len
 
             # model dimension must be divideable into equal parts for the attention heads
@@ -83,8 +81,9 @@ class BERTBase(nn.Module):
             Returns:
                 torch.Tensor: weighted embedding of input after multi-head Attention
             """
+            batch_size = Q.shape[0]  # infer batch_size dynamically
 
-            def fit_attention_head(t, number_heads, att_head_dim):
+            def fit_attention_head(t, number_heads, att_head_dim, batch_size):
                 """
                 Transform from (batch_size x seq_len x model_dimension)
                 to
@@ -99,13 +98,16 @@ class BERTBase(nn.Module):
                     torch.Tensor: reshaped tensor
 
                 """
-                t = t.view(self.batch_size, number_heads, self.seq_len, att_head_dim)
+
+
+
+                t = t.view(batch_size, number_heads, self.seq_len, att_head_dim)
                 t = t.transpose(2, 3)
                 return t
 
-            Q = fit_attention_head(self.Q(Q), self.number_heads, self.att_head_dim)
-            K = fit_attention_head(self.K(K), self.number_heads, self.att_head_dim)
-            V = fit_attention_head(self.V(V), self.number_heads, self.att_head_dim)
+            Q = fit_attention_head(self.Q(Q), self.number_heads, self.att_head_dim, batch_size)
+            K = fit_attention_head(self.K(K), self.number_heads, self.att_head_dim, batch_size)
+            V = fit_attention_head(self.V(V), self.number_heads, self.att_head_dim, batch_size)
 
             # calculate dot product between each Q and each K and normaliz the output, output dim: (batch_size x number_heads x seq_len x seq_len)
             score = torch.matmul(Q, K.transpose(2, 3))
@@ -122,7 +124,7 @@ class BERTBase(nn.Module):
             weighted_sum = torch.matmul(score_w, V)
 
             # concatenate attention heads to 1 output, output dim: (batch_size x seq_len x model_dimension)
-            weighted_sum = weighted_sum.transpose(2, 3).reshape(self.batch_size, -1,
+            weighted_sum = weighted_sum.transpose(2, 3).reshape(batch_size, -1,
                                                                 self.number_heads * self.att_head_dim)
 
             # linear embedding for output, output dim: (batch_size x seq_len x model_dimension)
@@ -187,10 +189,10 @@ class BERTBase(nn.Module):
 
         """
 
-        def __init__(self, model_dimension=EMBED_SIZE, number_heads=12, ff_hidden_dim=EMBED_SIZE * 4):
+        def __init__(self, seq_len=SEQ_LEN, model_dimension=EMBED_SIZE, number_heads=12, ff_hidden_dim=EMBED_SIZE * 4):
             super(BERTBase.Encoder, self).__init__()
             # attention heads
-            self.multihead_attention = BERTBase.MultiHeadAttention(number_heads, model_dimension, batch_size=BATCH_SIZE, seq_len=SEQ_LEN)
+            self.multihead_attention = BERTBase.MultiHeadAttention(number_heads, model_dimension, seq_len=seq_len)
             # normalisation layer
             self.normlayer = nn.LayerNorm(model_dimension)
             self.feedforward_layer = BERTBase.FeedForwardLayer(model_dimension, hidden_dimension=ff_hidden_dim)
@@ -212,7 +214,7 @@ class BERTBase(nn.Module):
 
         # base class for BERT
 
-    def __init__(self, vocab_size, model_dimension, pretrained_model, number_layers, number_heads):
+    def __init__(self, vocab_size, model_dimension, pretrained_model, number_layers, number_heads, seq_len=SEQ_LEN):
         """
         Initializes a the BERTBase model
 
@@ -236,8 +238,11 @@ class BERTBase(nn.Module):
         self.number_heads=number_heads
         # hidden layer dimenion of FF is 4*model_dimension 
         self.ff_hidden_layer = 4*model_dimension
-        # embedding of input 
-        self.embedding = embedding.BERTEmbedding(vocab_size=vocab_size, seq_len=SEQ_LEN, embed_size=model_dimension)
+        # embedding of input
+
+        self.seq_len = seq_len
+
+        self.embedding = embedding.BERTEmbedding(vocab_size=vocab_size, seq_len=seq_len, embed_size=model_dimension)
 
         
         # stack encoders and apply the pretrained weights to the layers of the encoders
