@@ -265,10 +265,10 @@ class BERTBase(nn.Module):
             self.dropout = torch.nn.Dropout(p=dropout)
 
         def forward(self, sequence, segments):
-            print(sequence.dtype)
-            print(segments.dtype)
-            sequence = sequence.to(torch.long)
-            segments = segments.to(torch.long)
+            #print(sequence.dtype)
+            #print(segments.dtype)
+            #sequence = sequence.to(torch.long).cuda()
+            #segments = segments.to(torch.long).cuda()
             total_embedding = self.token(sequence) + self.position(sequence) + self.segment(segments)
             return self.dropout(total_embedding)
 
