@@ -28,7 +28,7 @@ class TrainBERT:
         # cost function binary cross entropy loss for predicting each beloning to a class seperately
         self.criterion = nn.BCEWithLogitsLoss(
             reduction="mean",
-            pos_weight=torch.Tensor([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]).cuda() # TODO added 1 class for nothing
+            pos_weight=torch.Tensor(WEIGHTS_LIST).cuda() # TODO added 1 class for nothing
         ) # TODO Hardcoded
         
         # predictions threshold above which predictions are set True
