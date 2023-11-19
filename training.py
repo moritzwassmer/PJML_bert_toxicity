@@ -7,7 +7,7 @@ from tqdm import tqdm
 from params import *
 
 class TrainBERT:
-    def __init__(self, model, train_dataloader, epochs, test_dataloader=None, learning_rate=0.001, threshold=0.1, device=DEVICE): # TODO changed thrshold
+    def __init__(self, model, train_dataloader, epochs, test_dataloader=None, learning_rate=0.001, threshold=0.05, device=DEVICE): # TODO changed thrshold
         
         # hyperparameters for optimization
         self.device = device
@@ -87,6 +87,8 @@ class TrainBERT:
             
             # compute accuracy 
             # use threshold to determine which of the outputs are considered True
+            sigmoid = torch.nn.Sigmoid()
+            output = sigmoid(output)  # TODO for inference due to BCE with logits we need to apply sigmoid manually
             predictions = torch.ge(output, self.threshold).int()
             # compare with the label and count correct classifications
             corrects_sum += (predictions == labels).sum().item()
