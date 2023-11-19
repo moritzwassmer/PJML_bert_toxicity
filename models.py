@@ -240,10 +240,10 @@ class BERTBase(nn.Module):
             def forward(self,x):
                 return self.pos_embedding
 
-        def __init__(self, vocab_size, seq_len, embed_size=EMBED_SIZE, device=DEVICE):
+        def __init__(self, vocab_size=VOCAB_SIZE, seq_len=SEQ_LEN, embed_size=EMBED_SIZE, device=DEVICE):
             super().__init__()
             # token embedding: transforms (vocabulary size, number of tokens) into (vocabulary size, number of tokens, length of embdding vector)
-            self.token = nn.Embedding(vocab_size, embed_size, padding_idx=0).to(
+            self.token = nn.Embedding(vocab_size, embed_size, padding_idx=0).to( # are we sure padding is 0? -> yes
                 device)  # padding remains 0 during training
             # embedding of position
             self.position = BERTBase.BERTEmbedding.PositionEmbedding(embed_size, seq_len)
@@ -251,8 +251,8 @@ class BERTBase(nn.Module):
         def forward(self, sequence):
             return self.token(sequence) + self.position(sequence)
 
-    # TODO default parameters here, not in inner classes
-    def __init__(self, vocab_size, model_dimension, pretrained_model, number_layers, number_heads, seq_len=SEQ_LEN):
+    # TODO default parameters
+    def __init__(self, vocab_size=VOCAB_SIZE, model_dimension=EMBED_SIZE, pretrained_model=None, number_layers=NUMBER_LAYERS, number_heads=NUMBER_HEADS, seq_len=SEQ_LEN):
         """
         Initializes a the BERTBase model
 
@@ -282,13 +282,13 @@ class BERTBase(nn.Module):
 
         self.embedding = BERTBase.BERTEmbedding(vocab_size=vocab_size, seq_len=seq_len, embed_size=model_dimension)
 
-        
-        # stack encoders and apply the pretrained weights to the layers of the encoders
-        self.encoders = torch.nn.ModuleList() # create empty module list
-        for i in range(self.number_layers):
-            encoder = BERTBase.Encoder(model_dimension=model_dimension, number_heads=number_heads, ff_hidden_dim=4*model_dimension)
-            encoder.load_state_dict(pretrained_model.encoder.layer[i].state_dict(), strict=False)
-            self.encoders.append(encoder)
+        if pretrained_model is not None:
+            # stack encoders and apply the pretrained weights to the layers of the encoders
+            self.encoders = torch.nn.ModuleList() # create empty module list
+            for i in range(self.number_layers):
+                encoder = BERTBase.Encoder(model_dimension=model_dimension, number_heads=number_heads, ff_hidden_dim=4*model_dimension)
+                encoder.load_state_dict(pretrained_model.encoder.layer[i].state_dict(), strict=False)
+                self.encoders.append(encoder)
         
     def forward(self, x):
         """
@@ -374,7 +374,7 @@ class Model(nn.Module):
         toxic_comment (ToxicityPrediction): head for toxic comment classification
 
     """
-    def __init__(self, vocab_size, model_dimension, pretrained_model, number_layers=12, number_heads=12):
+    def __init__(self, vocab_size=VOCAB_SIZE, model_dimension=EMBED_SIZE, pretrained_model=None, number_layers=NUMBER_LAYERS, number_heads=NUMBER_HEADS):
         """
         Initializes the model
 
