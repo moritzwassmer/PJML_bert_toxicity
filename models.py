@@ -26,7 +26,7 @@ class BERTBase(nn.Module):
         number_layers (int): number of transformer layers
         number_heads (int): number of attention heads
         ff_hidden_layer (int): hidden layer dimension of the feedforward network (4 * model_dimension)
-        embedding (BERTEmbedding): BERT embedding layer 
+        embedding (BertEmbedding): BERT embedding layer
         encoders (torch.nn.ModuleList): list of encoder modules
     """
 
@@ -70,7 +70,7 @@ class BERTBase(nn.Module):
                             number_heads (int): total number of attention heads
                             model_dimension (int): input dimension of the model
                         """
-                        super(BERTBase.BertLayer.BertSelfAttention, self).__init__()
+                        super(BERTBase.BertEncoder.BertLayer.BertAttention.BertSelfAttention, self).__init__()
 
                         self.seq_len = seq_len
 
@@ -170,7 +170,7 @@ class BERTBase(nn.Module):
                             hidden_dimension (int): dimension of the hidden layer
 
                         """
-                        super(BERTBase.BertLayer.BertSelfOutput, self).__init__()
+                        super(BERTBase.BertEncoder.BertLayer.BertAttention.BertSelfOutput, self).__init__()
 
                         # linear layer
 
@@ -191,9 +191,11 @@ class BERTBase(nn.Module):
                         return self.dropout(self.normlayer(x))
 
                 def __init__(self, seq_len=SEQ_LEN, model_dimension=EMBED_SIZE, number_heads=NUMBER_HEADS, ff_hidden_dim=EMBED_SIZE * 4):
-                    self.bert_self_attention = BERTBase.BertLayer.BertSelfAttention(number_heads, model_dimension, seq_len=seq_len)
-                    self.bert_intermediate = BERTBase.BertLayer.BertIntermediate(model_dimension=EMBED_SIZE, hidden_dimension=EMBED_SIZE * 4)
-                    self.bert_self_output = BERTBase.BertLayer.BertSelfOutput(model_dimension=EMBED_SIZE, hidden_dimension=EMBED_SIZE * 4)
+
+                    super(BERTBase.BertEncoder.BertLayer.BertAttention, self).__init__()
+                    self.bert_self_attention = BERTBase.BertEncoder.BertLayer.BertAttention.BertSelfAttention(number_heads, model_dimension, seq_len=seq_len)
+                    #self.bert_intermediate = BERTBase.BertEncoder.BertLayer.BertIntermediate(model_dimension=EMBED_SIZE, hidden_dimension=EMBED_SIZE * 4)
+                    self.bert_self_output = BERTBase.BertEncoder.BertLayer.BertAttention.BertSelfOutput(model_dimension=EMBED_SIZE, hidden_dimension=EMBED_SIZE * 4)
 
                 def forward(self, x, mask): # TODO unsure about this forward pass
 
@@ -204,7 +206,7 @@ class BERTBase(nn.Module):
             class BertIntermediate(nn.Module):
 
                 def __init__(self, model_dimension=EMBED_SIZE, hidden_dimension=EMBED_SIZE * 4):
-                    super(BERTBase.BertLayer.BertIntermediate, self).__init__()
+                    super(BERTBase.BertEncoder.BertLayer.BertIntermediate, self).__init__()
                     self.linear = nn.Linear(model_dimension, hidden_dimension)
                     # non-linearity
                     self.non_linear = nn.GELU()
@@ -223,12 +225,12 @@ class BERTBase(nn.Module):
 
             def __init__(self, seq_len=SEQ_LEN, model_dimension=EMBED_SIZE, number_heads=NUMBER_HEADS,
                          ff_hidden_dim=EMBED_SIZE * 4):
-                super(BERTBase.BertLayer, self).__init__()
+                super(BERTBase.BertEncoder.BertLayer, self).__init__()
                 # attention heads
-                self.bert_attention = BERTBase.BertLayer.BertAttention() # TODO params
+                self.bert_attention = BERTBase.BertEncoder.BertLayer.BertAttention() # TODO params
                 # normalisation layer
                 # self.normlayer = nn.LayerNorm(model_dimension)
-                self.bert_intermediate = BERTBase.BertLayer.BertIntermediate() # TODO params
+                self.bert_intermediate = BERTBase.BertEncoder.BertLayer.BertIntermediate() # TODO params
                 # self.dropout = nn.Dropout(0.1) # TODO hardcoded
 
             def forward(self, x, mask):
@@ -253,17 +255,25 @@ class BERTBase(nn.Module):
 
             # base class for BERT
 
-        def __init__(self):
-            pass # TODO
+        def __init__(self, model_dimension=EMBED_SIZE, number_layers=NUMBER_LAYERS, number_heads=NUMBER_HEADS):
 
-        def forward(self, x):
-            pass # TODO
+            super().__init__()
 
+            # INIT ENCODERS
+            self.encoders = torch.nn.ModuleList()  # create empty module list
+            for i in range(number_layers):
+                encoder = BERTBase.BertEncoder.BertLayer(model_dimension=model_dimension, number_heads=number_heads,
+                                             ff_hidden_dim=4 * model_dimension)
+                self.encoders = self.encoders.append(encoder)
 
+        def forward(self, x, mask):
+            # run trough encoders
+            for encoder in self.encoders:
+                x = encoder.forward(x, mask)
 
-    class BERTEmbedding(torch.nn.Module):
+    class BertEmbedding(torch.nn.Module):
         """
-            BERTEmbedding is a module that combines token embeddings and positional embeddings for input sequences.
+            BertEmbedding is a module that combines token embeddings and positional embeddings for input sequences.
 
             Parameters:
             - vocab_size (int): Size of the vocabulary.
@@ -310,7 +320,7 @@ class BERTBase(nn.Module):
             self.token = nn.Embedding(vocab_size, embed_size, padding_idx=0).to( # are we sure padding is 0? -> yes
                 device)  # padding remains 0 during training
             # embedding of position
-            self.position = BERTBase.BERTEmbedding.PositionEmbedding(embed_size, seq_len)
+            self.position = BERTBase.BertEmbedding.PositionEmbedding(embed_size, seq_len)
             self.segment = nn.Embedding(3, embed_size, padding_idx=0)
             self.dropout = torch.nn.Dropout(p=dropout)
             self.normlayer = nn.LayerNorm(embed_size)
@@ -324,7 +334,8 @@ class BERTBase(nn.Module):
             norm_embedding = self.normlayer(total_embedding)
             return self.dropout(norm_embedding)
 
-    def __init__(self, vocab_size=VOCAB_SIZE, model_dimension=EMBED_SIZE, use_pretrained=True, number_layers=NUMBER_LAYERS, number_heads=NUMBER_HEADS, seq_len=SEQ_LEN):
+    def __init__(self, vocab_size=VOCAB_SIZE, model_dimension=EMBED_SIZE, use_pretrained=True,
+                 number_layers=NUMBER_LAYERS, number_heads=NUMBER_HEADS, seq_len=SEQ_LEN):
         """
         Initializes a the BERTBase model
 
@@ -340,7 +351,7 @@ class BERTBase(nn.Module):
             number_layers (int): number of transformer layers
             number_heads (int): number of attention heads
             ff_hidden_layer (int): hidden layer dimension of feedforward module (4 * model_dimension)
-            embedding (BERTEmbedding): BERT embedding 
+            embedding (BertEmbedding): BERT embedding
         """
         super().__init__()
         self.model_dimension=model_dimension
@@ -352,15 +363,8 @@ class BERTBase(nn.Module):
 
         self.seq_len = seq_len
 
-        self.embedding = BERTBase.BERTEmbedding(vocab_size=vocab_size, seq_len=seq_len, embed_size=model_dimension)
-        # TODO Init embedding layer
-
-        # INIT ENCODERS
-        self.encoders = torch.nn.ModuleList()  # create empty module list
-        for i in range(self.number_layers):
-            encoder = BERTBase.BertLayer(model_dimension=model_dimension, number_heads=number_heads, ff_hidden_dim=4 * model_dimension)
-            self.encoders = self.encoders.append(encoder)
-        #print(self.encoders[0])
+        self.embedding = BERTBase.BertEmbedding(vocab_size=vocab_size, seq_len=seq_len, embed_size=model_dimension)
+        self.encoder = BERTBase.BertEncoder(model_dimension=model_dimension,number_layers=number_layers,number_heads=number_heads)
 
         # TODO
         """
@@ -404,8 +408,7 @@ class BERTBase(nn.Module):
 
         x = self.embedding(words, segments)
         # run trough encoders
-        for encoder in self.encoders:
-            x = encoder.forward(x, mask)
+        x = self.encoder(x, mask)
         return x
     
 
