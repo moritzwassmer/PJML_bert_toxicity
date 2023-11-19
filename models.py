@@ -272,11 +272,11 @@ class BERTBase(nn.Module):
                 """
 
                 x = self.bert_attention(x,mask)
-                #print(x)
+
                 x = self.bert_intermediate(x)
-                #print(x)
+
                 x = self.bert_output(x)
-                #print(x)
+
 
                 """x = self.normlayer(self.multihead_attention(x, x, x, mask))
                 x = self.normlayer(self.feedforward_layer(x)) # TODO WRONG
@@ -353,16 +353,13 @@ class BERTBase(nn.Module):
                 device)  # padding remains 0 during training
             # embedding of position
             self.position = BERTBase.BertEmbedding.PositionEmbedding(embed_size, seq_len)
-            self.segment = nn.Embedding(3, embed_size, padding_idx=0)
+            self.segment = nn.Embedding(2, embed_size, padding_idx=0)
             self.normlayer = nn.LayerNorm(embed_size)
             self.dropout = torch.nn.Dropout(p=dropout)
 
 
         def forward(self, sequence, segments):
-            #print(sequence.dtype)
-            #print(segments.dtype)
-            #sequence = sequence.to(torch.long).cuda()
-            #segments = segments.to(torch.long).cuda()
+
             total_embedding = self.token(sequence) + self.position(sequence) + self.segment(segments)
             norm_embedding = self.normlayer(total_embedding)
             return self.dropout(norm_embedding)
@@ -399,7 +396,7 @@ class BERTBase(nn.Module):
         self.embedding = BERTBase.BertEmbedding(vocab_size=vocab_size, seq_len=seq_len, embed_size=model_dimension)
         self.encoder = BERTBase.BertEncoder(model_dimension=model_dimension,number_layers=number_layers,number_heads=number_heads)
 
-        # TODO
+        # TODO implement load model weights
         """
         if use_pretrained:
             self.load_from_pretrained()
@@ -414,13 +411,11 @@ class BERTBase(nn.Module):
         pretrained_model = BertModel.from_pretrained(bert_base, config=configuration)
 
         # TODO Embedding layers
-        #print(pretrained_model.encoder.layer[0].state_dict())
-        #print(self.encoders[0])
+
 
         # stack encoders and apply the pretrained weights to the layers of the encoders
         self.encoders = torch.nn.ModuleList()  # create empty module list
         for i in range(self.number_layers):
-            #print(i)
             pretrained_encoder = pretrained_model.encoder.layer[i].state_dict()
             encoder = self.encoders[i]
             encoder = encoder.load_state_dict(pretrained_encoder, strict=False)
@@ -442,7 +437,7 @@ class BERTBase(nn.Module):
         x = self.embedding(words, segments)
         # run trough encoders
         x = self.encoder(x, mask)
-        #print(x)
+
         return x
     
 
@@ -545,5 +540,5 @@ class Model(nn.Module):
 
         """
         x = self.base_model(words, segments)
-        #print(x)
+
         return self.toxic_comment(x)

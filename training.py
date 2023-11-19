@@ -64,7 +64,7 @@ class TrainBERT:
             output = self.model.forward(data['input'], data["segment"])
             
             # compute loss with labels (input, target)
-            loss = self.criterion(output, labels)
+            loss = self.criterion(output, labels) # TODO wrong loss function, this is normal BCE loss for single label classification
 
             # average loss per batch
             avg_loss += loss.item()
