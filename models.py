@@ -184,7 +184,7 @@ class BERTBase(nn.Module):
 
             # feedforward layer
 
-        def __init__(self, seq_len=SEQ_LEN, model_dimension=EMBED_SIZE, number_heads=12, ff_hidden_dim=EMBED_SIZE * 4):
+        def __init__(self, seq_len=SEQ_LEN, model_dimension=EMBED_SIZE, number_heads=NUMBER_HEADS, ff_hidden_dim=EMBED_SIZE * 4):
             super(BERTBase.Encoder, self).__init__()
             # attention heads
             self.multihead_attention = BERTBase.Encoder.MultiHeadAttention(number_heads, model_dimension, seq_len=seq_len)
@@ -210,12 +210,24 @@ class BERTBase(nn.Module):
         # base class for BERT
 
     class BERTEmbedding(torch.nn.Module):
+        """
+            BERTEmbedding is a module that combines token embeddings and positional embeddings for input sequences.
+
+            Parameters:
+            - vocab_size (int): Size of the vocabulary.
+            - seq_len (int): Length of the input sequence.
+            - embed_size (int): Dimensionality of the embedding vector.
+            - device (str): Device on which the module is instantiated.
+            """
 
         class PositionEmbedding(torch.nn.Module):
-            # TODO Docstring
             """
-            has to be created only once
+                Generates positional embeddings for input sequences.
+                The positional embeddings are created only once during initialization and are not updated during gradient descent.
 
+                Parameters:
+                - embed_size (int): Dimensionality of the embedding vector. Default is EMBED_SIZE.
+                - seq_len (int): Length of the input sequence. Default is SEQ_LEN.
             """
 
             def create_embedding_matrix(self, embed_size, seq_len):
@@ -251,7 +263,6 @@ class BERTBase(nn.Module):
         def forward(self, sequence):
             return self.token(sequence) + self.position(sequence)
 
-    # TODO default parameters
     def __init__(self, vocab_size=VOCAB_SIZE, model_dimension=EMBED_SIZE, pretrained_model=None, number_layers=NUMBER_LAYERS, number_heads=NUMBER_HEADS, seq_len=SEQ_LEN):
         """
         Initializes a the BERTBase model
@@ -259,7 +270,7 @@ class BERTBase(nn.Module):
         Parameters:
             vocab_size (int): size of the vocabulary
             model_dimension (int): model dimension
-            pretrained_model (str): path of the pretrained model
+            pretrained_model (str): path of the pretrained model # TODO wrong
             number_layers (int): number of transformer layers
             number_heads (int): number of attention heads
 
@@ -289,7 +300,7 @@ class BERTBase(nn.Module):
                 encoder = BERTBase.Encoder(model_dimension=model_dimension, number_heads=number_heads, ff_hidden_dim=4*model_dimension)
                 encoder.load_state_dict(pretrained_model.encoder.layer[i].state_dict(), strict=False)
                 self.encoders.append(encoder)
-        
+
     def forward(self, x):
         """
         Forward pass of the BERTBase model
@@ -310,7 +321,7 @@ class BERTBase(nn.Module):
     
 
     # finetuning
-class ToxicityPrediction(nn.Module):
+class ToxicityPredictionHead(nn.Module):
     """
     Head for toxicity classification
 
@@ -325,7 +336,7 @@ class ToxicityPrediction(nn.Module):
     """
     def __init__(self, bert_out):
         """
-        Initializes the ToxicityPrediction model
+        Initializes the ToxicityPredictionHead model
 
         Parameters:
             bert_out (int): dimension of the BERT output
@@ -344,7 +355,7 @@ class ToxicityPrediction(nn.Module):
         
     def forward(self, x):
         """
-        Forward pass of ToxicityPrediction 
+        Forward pass of ToxicityPredictionHead
 
         Parameters:
             x (torch.Tensor): input tensor
@@ -371,7 +382,7 @@ class Model(nn.Module):
 
     Attributes:
         base_model (BERTBase): base BERT model 
-        toxic_comment (ToxicityPrediction): head for toxic comment classification
+        toxic_comment (ToxicityPredictionHead): head for toxic comment classification
 
     """
     def __init__(self, vocab_size=VOCAB_SIZE, model_dimension=EMBED_SIZE, pretrained_model=None, number_layers=NUMBER_LAYERS, number_heads=NUMBER_HEADS):
@@ -387,14 +398,14 @@ class Model(nn.Module):
 
         Attributes:
             base_model (BERTBase): base BERT model 
-            toxic_comment (ToxicityPrediction): head for toxic comment classification
+            toxic_comment (ToxicityPredictionHead): head for toxic comment classification
 
         """
         super().__init__()
         # base BERT model
         self.base_model = BERTBase(vocab_size, model_dimension, pretrained_model, number_layers, number_heads)
         # toxic comment classfication layer
-        self.toxic_comment = ToxicityPrediction(self.base_model.model_dimension)
+        self.toxic_comment = ToxicityPredictionHead(self.base_model.model_dimension)
     
     def forward(self, x):
         """
