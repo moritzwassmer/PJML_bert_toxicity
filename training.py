@@ -26,7 +26,10 @@ class TrainBERT:
         self.scheduler = StepLR(self.optimizer, step_size=5, gamma=0.1)
 
         # cost function binary cross entropy loss for predicting each beloning to a class seperately
-        self.criterion = nn.BCELoss()
+        self.criterion = nn.BCEWithLogitsLoss(
+            reduction="mean",
+            pos_weight=torch.Tensor([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]).cuda() # TODO added 1 class for nothing
+        ) # TODO Hardcoded
         
         # predictions threshold above which predictions are set True
         self.threshold = threshold 
@@ -58,17 +61,19 @@ class TrainBERT:
             data ={key: value.to(self.device) for key, value in data.items()}
             
             # labels convert to float()
-            labels = data['labels'].float()
+            labels = data['labels'].to(torch.float)
+
+            #print(labels.shape)
             
             # forward pass: comments trough model
             output = self.model.forward(data['input'], data["segment"])
-            
-            # compute loss with labels (input, target)
-            loss = self.criterion(output, labels) # TODO wrong loss function, this is normal BCE loss for single label classification
 
-            # average loss per batch
+            #print(output.shape)
+
+            loss = self.criterion(output, labels)
+
             avg_loss += loss.item()
-            
+
             # backward pass for training
             self.optimizer.zero_grad()
             loss.backward()

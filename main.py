@@ -85,6 +85,7 @@ def main():
     berti = models.Model(vocab_size=VOCAB_SIZE, model_dimension=EMBED_SIZE, use_pretrained=True, number_layers=NUMBER_LAYERS, number_heads=NUMBER_HEADS)
 
     # train model (device to be updated according to cluster GPU)
+    #__init__(self, model, train_dataloader, epochs, test_dataloader=None, learning_rate=0.001, threshold=0.01,device=DEVICE):
     training.TrainBERT(berti, train_loader, EPOCHS, device=DEVICE)
 
 

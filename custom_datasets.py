@@ -47,8 +47,14 @@ class ToxicComment(Dataset):
         # Step 3: add segment_label like in pretraining task for consistency  TODO 1s for non padded elements only
         output["segment"] = torch.ones(self.seq_len,dtype=torch.long)
         
-        # Step 4: collect different labels to one tensor 
-        labels = torch.cat([output[key] if isinstance(output[key], torch.Tensor) else torch.tensor([output[key]]) for key in ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']],dim=-1)
+        # Step 4: collect different labels to one tensor # TODO created one more class if nothing of the following classes
+        asdf = [output[key] if isinstance(output[key], torch.Tensor) else torch.tensor([output[key]]) for key in
+                ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']]
+        all_zero = torch.sum(torch.cat(asdf)) == 0
+        if all_zero:
+            labels = torch.cat([torch.ones(1)] + asdf,dim=-1)
+        else:
+            labels = torch.cat([torch.zeros(1)] + asdf,dim=-1)
         output["labels"] = labels.to(DEVICE)
         
         return output

@@ -469,7 +469,7 @@ class ToxicityPredictionHead(nn.Module):
 
         """
         super().__init__()
-        self.tox_classes = 6 # there are 6 classes of toxicity in the dataset
+        self.tox_classes = 7 # there are 6 classes of toxicity in the dataset # TODO changed to 7 for nothing class
         self.linear = nn.Linear(bert_out, self.tox_classes)
         # multilabel classification taks output is probiability of beloning to a class for each component of the output vector seperately 
         self.sigmoid = nn.Sigmoid()
@@ -486,7 +486,10 @@ class ToxicityPredictionHead(nn.Module):
 
         """
         # recieve output dimension (batch_size, self.tox_classes)
-        return self.sigmoid(self.linear(x[:, 0]))
+
+        x = self.linear(x[:, 0])
+        #x = self.sigmoid() # TODO commented out due to BCELossWithLogits, does combine sigmoid with BCE loss in one class, also multilabel classification
+        return x
 
 
 # TASK SHEET: model class    
