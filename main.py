@@ -46,8 +46,8 @@ def load_data(dataset:str, transformation=None, n_train:int=None, n_test:int=Non
         )
 
         # initialize dataloader for training and testing
-        train = DataLoader(train, batch_size, shuffle)
-        test = DataLoader(test, batch_size, shuffle)
+        train = DataLoader(train, batch_size, shuffle, drop_last= True)
+        test = DataLoader(test, batch_size, shuffle, drop_last= True)
         return train, test
     
     else:
