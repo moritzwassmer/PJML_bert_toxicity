@@ -45,7 +45,7 @@ class ToxicComment(Dataset):
         output.pop("comment_text") #delete raw text
         
         # Step 3: add segment_label like in pretraining task for consistency 
-        output["segment"] = torch.ones(self.seq_len).to(DEVICE)
+        output["segment"] = torch.ones(self.seq_len,device=DEVICE)
         
         # Step 4: collect different labels to one tensor 
         labels = torch.cat([output[key] if isinstance(output[key], torch.Tensor) else torch.tensor([output[key]]) for key in ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']],dim=-1)
