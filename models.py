@@ -263,6 +263,7 @@ class BERTBase(nn.Module):
             self.position = BERTBase.BERTEmbedding.PositionEmbedding(embed_size, seq_len)
             self.segment = nn.Embedding(3, embed_size, padding_idx=0)
             self.dropout = torch.nn.Dropout(p=dropout)
+            self.normlayer = nn.LayerNorm(embed_size)
 
         def forward(self, sequence, segments):
             #print(sequence.dtype)
@@ -270,7 +271,8 @@ class BERTBase(nn.Module):
             #sequence = sequence.to(torch.long).cuda()
             #segments = segments.to(torch.long).cuda()
             total_embedding = self.token(sequence) + self.position(sequence) + self.segment(segments)
-            return self.dropout(total_embedding)
+            norm_embedding = self.normlayer(total_embedding)
+            return self.dropout(norm_embedding)
 
     def __init__(self, vocab_size=VOCAB_SIZE, model_dimension=EMBED_SIZE, use_pretrained=True, number_layers=NUMBER_LAYERS, number_heads=NUMBER_HEADS, seq_len=SEQ_LEN):
         """
