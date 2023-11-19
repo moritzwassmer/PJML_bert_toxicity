@@ -488,7 +488,7 @@ class ToxicityPredictionHead(nn.Module):
         # recieve output dimension (batch_size, self.tox_classes)
 
         x = self.linear(x[:, 0])
-        #x = self.sigmoid() # TODO commented out due to BCELossWithLogits, does combine sigmoid with BCE loss in one class, also multilabel classification
+        #x = self.sigmoid(x) # TODO commented out due to BCELossWithLogits, does combine sigmoid with BCE loss in one class, also multilabel classification
         return x
 
 

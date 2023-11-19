@@ -7,7 +7,7 @@ from tqdm import tqdm
 from params import *
 
 class TrainBERT:
-    def __init__(self, model, train_dataloader, epochs, test_dataloader=None, learning_rate=0.001, threshold=0.5, device=DEVICE):
+    def __init__(self, model, train_dataloader, epochs, test_dataloader=None, learning_rate=0.001, threshold=0.1, device=DEVICE): # TODO changed thrshold
         
         # hyperparameters for optimization
         self.device = device
@@ -52,6 +52,9 @@ class TrainBERT:
         corrects_sum = 0
         total = 0
         zero_prediction = 0
+        one_prediction = 0
+        positives = 0
+        positives_not_nothing = 0
 
         for i, data in enumerate(self.training_data):
             
@@ -68,6 +71,8 @@ class TrainBERT:
             
             # forward pass: comments trough model
             output = self.model.forward(data['input'], data["segment"])
+
+            #print(output)
 
             #print(output.shape)
 
@@ -87,17 +92,20 @@ class TrainBERT:
             corrects_sum += (predictions == labels).sum().item()
             # check whether model is only predicting 0
             zero_prediction += ((predictions == 0) & (labels == 0)).sum().item()
+            one_prediction += ((predictions == 1) & (labels == 1)).sum().item()
+            positives += (labels == 1).sum().item()
+            positives_not_nothing += (labels[:,1:labels.shape[1]] == 1).sum().item()
             # sump up total number of labels in batch
             total += labels.nelement()
         
         # update learning rate scheduler
         self.scheduler.step() 
         # print stats
-        output ="\nTraining epoch: {}\nAvg. training loss: {:.2f}\nAccuracy: {:.2f}\nCorrect predictions: {} of which the model predicted 'False': {}".format(epoch+1, avg_loss / len(self.training_data), corrects_sum / total, corrects_sum, zero_prediction)
-        print(output)
+        message ="\nTraining epoch: {}\nAvg. training loss: {:.2f}\nAccuracy: {:.2f}\nCorrect predictions: {} of which the model predicted 'False': {}, true positives={}, positives={}, positives_not_nothing={}".format(epoch+1, avg_loss / len(self.training_data), corrects_sum / total, corrects_sum, zero_prediction, one_prediction, positives, positives_not_nothing)
+        print(message)
 
         # write in results
-        self.write_results(output, "training_results")
+        self.write_results(message, "training_results")
 
         # reset progress bar
         self.bar.n = 0
@@ -113,6 +121,8 @@ class TrainBERT:
         corrects_sum = 0
         total = 0
         zero_prediction = 0
+        one_prediction = 0
+        positives = 0
 
         with torch.no_grad():
             for i, data in enumerate(self.testing_data):
@@ -131,21 +141,25 @@ class TrainBERT:
 
                 # compute accuracy
                 # use threshold to determine which of the outputs are considered True
-                predictions = torch.ge(output, self.threshold).int()
+                sigmoid = torch.nn.Sigmoid()
+                output =  sigmoid(output)# TODO for inference due to BCE with logits we need to apply sigmoid manually
+                predictions = torch.ge(output, self.threshold).int() # TODO was self.threshold
                 # compare with the label and count correct classifications
                 corrects_sum += (predictions == labels).sum().item()
                 # check whether model is only predicting 0
                 zero_prediction += ((predictions == 0) & (labels == 0)).sum().item()
+                one_prediction += ((predictions == 1) & (labels == 1)).sum().item()
+                positives += (labels == 1).sum().item()
                 # sum up total number of labels in batch
                 total += labels.nelement()
 
         # print stats for testing
-        output = "\nTesting epoch: {}\nAvg. testing loss: {:.2f}\nAccuracy: {:.2f}\nCorrect predictions: {} of which the model predicted 'False': {}".format(
-            epoch + 1, avg_loss / len(self.testing_data), corrects_sum / total, corrects_sum, zero_prediction)
-        print(output)
+        message = "\nTesting epoch: {}\nAvg. testing loss: {:.2f}\nAccuracy: {:.2f}\nCorrect predictions: {} of which the model predicted 'False': {}, true positives={}, positives = {}".format(
+            epoch + 1, avg_loss / len(self.testing_data), corrects_sum / total, corrects_sum, zero_prediction, one_prediction, positives)
+        print(message)
 
         # write results
-        self.write_results(output, "testing_results")
+        self.write_results(message, "testing_results")
 
         # Set the model back to training mode
         self.model.train()
