@@ -7,187 +7,11 @@ import embedding
 
 import numpy as np
 
-# attention heads
-class MultiHeadAttention(nn.Module):
-    """
-    Module for multi-headed Attention
 
-    Args:
-        number_heads (int): number of attention heads
-        model_dimension (int): input dimension of the model
 
-    Attributes:
-        number_heads (int): total number of attention heads
-        att_head_dim (int): input dimension of each attention head
-        Q (nn.Linear): query layer for Attention
-        K (nn.Linear): key layer for Attention
-        V (nn.Linear): value layer for Attention
-        lin_output (nn.Linear): linear layer for the output of Attention
-    """
-    def __init__(self,  number_heads, model_dimension, batch_size = BATCH_SIZE, seq_len = SEQ_LEN):
-        """
-        Initializing MultiHeadAttention
-
-        Args:
-            number_heads (int): total number of attention heads
-            model_dimension (int): input dimension of the model
-        """
-        super(MultiHeadAttention, self).__init__()
-
-        self.batch_size = batch_size
-        self.seq_len = seq_len
-        
-        # model dimension must be divideable into equal parts for the attention heads
-        self.number_heads = number_heads
-        self.att_head_dim = int(model_dimension/number_heads)
-        
-        # attention mechanism: Q, K, V are linear embeddings -> embedding matrix dim: (model_dimension x model_dimension)
-        self.Q = nn.Linear(model_dimension, model_dimension)
-        self.K = nn.Linear(model_dimension, model_dimension)
-        self.V = nn.Linear(model_dimension, model_dimension)
-        self.lin_output = nn.Linear(model_dimension, model_dimension)
-    
-    def forward(self, Q, K, V, mask):
-        """
-        Forward pass trough MultiHeadAttention
-
-        Args: 
-            Q (torch.Tensor): query
-            K (torch.Tensor): key
-            V (torch.Tensor): value
-            mask (torch.Tensor): mask for the padded tokens
-        
-        Returns:
-            torch.Tensor: weighted embedding of input after multi-head Attention
-        """
-
-        def fit_attention_head(t, number_heads, att_head_dim):
-            """
-            Transform from (batch_size x seq_len x model_dimension)
-            to
-            (batch_size x number_heads x seq_len x att_head_dim)
-
-            Args:
-                t (torch.Tensor): input tensor
-                number_heads (int): number of attention heads
-                att_head_dim (int): dimension of each attention head
-
-            Returns:
-                torch.Tensor: reshaped tensor
-
-            """
-            t = t.view(self.batch_size, number_heads, self.seq_len, att_head_dim)
-            t = t.transpose(2, 3)
-            return t
-
-        Q = fit_attention_head(self.Q(Q), self.number_heads, self.att_head_dim)
-        K = fit_attention_head(self.K(K), self.number_heads, self.att_head_dim)
-        V = fit_attention_head(self.V(V), self.number_heads, self.att_head_dim)
-
-        # calculate dot product between each Q and each K and normaliz the output, output dim: (batch_size x number_heads x seq_len x seq_len)
-        score = torch.matmul(Q, K.transpose(2,3))
-        score_n = score / math.sqrt(self.att_head_dim) # normalize: <q,k>/sqrt(d_k)
-        
-        # mask 0 with -infinity so it becomes 0 after softmax, output dim: (batch_size x number_heads x seq_len x seq_len)
-        score_m = score_n.masked_fill(mask == 0, -np.inf) # -> DELETE COMMENT: this is not for the pretraining masks but the padded tokens, they are 0 (see line 253)
-        
-        # softmax scores along each Q, output dim: (batch_size x number_heads x seq_len x seq_len)
-        score_w = nn.functional.softmax(score_m, dim=-1) 
-        
-        # multiply with V matrix: output weighted sum for each Q, output dim: (batch_size x number_heads x seq_len x att_head_dim)
-        weighted_sum = torch.matmul(score_w, V)
-        
-        # concatenate attention heads to 1 output, output dim: (batch_size x seq_len x model_dimension)
-        weighted_sum = weighted_sum.transpose(2, 3).reshape(self.batch_size, -1, self.number_heads * self.att_head_dim)
-        
-        # linear embedding for output, output dim: (batch_size x seq_len x model_dimension)
-        out = self.lin_output(weighted_sum)      
-        return out    
-    
-
-    # feedforward layer
-class FeedForwardLayer(nn.Module):
-    """
-    Module for a feedforward layer
-
-    Args:
-        model_dimension (int): dimension of input vector
-        hidden_dimension (int): dimension of the hidden layer
-
-    Attributes:
-        linear1 (nn.Linear): transforms to hidden layer linearly
-        linear2 (nn.Linear): transforms from hidden layer to output linearly
-        non_linear (nn.ReLU): non-linear layer in the middle
-    """
-    def __init__(self, model_dimension, hidden_dimension):
-        """
-        Initializing FeedForwardLayer
-
-        Args:
-            model_dimension (int): dimension of input vector
-            hidden_dimension (int): dimension of the hidden layer
-
-        """
-        super(FeedForwardLayer, self).__init__()
-        
-        # linear layer
-        self.linear1 = nn.Linear(model_dimension, hidden_dimension)
-        self.linear2 = nn.Linear(hidden_dimension, model_dimension)
-        # non-linearity
-        self.non_linear = nn.ReLU()
-    
-    def forward(self, x):
-        """
-        Forward pass trough FeedForwardLayer
-
-        Args: 
-            x (torch.Tensor): input tensor
-        
-        Returns:
-            torch.Tensor: output of FeedForward layer
-        """
-        return self.linear2(self.non_linear(self.linear1(x)))       
-    
-
-    # encoder stacks together all the previous modules
-class Encoder(nn.Module):
-    """
-    Puts together an encoder: MultiHeadAttention + feedforward layer + normalization layer
-
-    Args: 
-        model_dimension (int): input dimension (default: EMBED_SIZE)
-        number_heads (int): number of attention heads (default: 12)
-        ff_hidden_dim (int): dimension of hidden layer in feedforward (default: EMBED_SIZE*4)
-
-    """
-    def __init__(self,  model_dimension=EMBED_SIZE, number_heads=12, ff_hidden_dim=EMBED_SIZE*4):
-        super(Encoder, self).__init__()
-        # attention heads
-        self.multihead_attention = MultiHeadAttention (number_heads, model_dimension)
-        # normalisation layer
-        self.normlayer = nn.LayerNorm(model_dimension)
-        self.feedforward_layer = FeedForwardLayer(model_dimension, hidden_dimension=ff_hidden_dim)
-    
-    def forward(self, x, mask):
-        """
-        Forward pass through Encoder 
-
-        Args:
-            x (torch.Tensor): input tensor
-            mask (torch.Tensor): mask padded tokens
-
-        Returns:
-            torch.Tensor: output of encoder
-        """
-        # input x 3x to generate Q, K, V
-        x = self.normlayer(self.multihead_attention(x, x, x, mask))
-        return self.normlayer(self.feedforward_layer(x))
-    
-
-    # base class for BERT
 class BERTBase(nn.Module):
     """
-    Base class for BERT model
+    Base class for BERT model without a Task specific head
 
     Args:
         vocab_size (int): size of vocabulary
@@ -204,6 +28,190 @@ class BERTBase(nn.Module):
         embedding (BERTEmbedding): BERT embedding layer 
         encoders (torch.nn.ModuleList): list of encoder modules
     """
+
+    # attention heads
+    class MultiHeadAttention(nn.Module):
+        """
+        Module for multi-headed Attention
+
+        Args:
+            number_heads (int): number of attention heads
+            model_dimension (int): input dimension of the model
+
+        Attributes:
+            number_heads (int): total number of attention heads
+            att_head_dim (int): input dimension of each attention head
+            Q (nn.Linear): query layer for Attention
+            K (nn.Linear): key layer for Attention
+            V (nn.Linear): value layer for Attention
+            lin_output (nn.Linear): linear layer for the output of Attention
+        """
+
+        def __init__(self, number_heads, model_dimension, batch_size, seq_len):
+            """
+            Initializing MultiHeadAttention
+
+            Args:
+                number_heads (int): total number of attention heads
+                model_dimension (int): input dimension of the model
+            """
+            super(BERTBase.MultiHeadAttention, self).__init__()
+
+            self.batch_size = batch_size
+            self.seq_len = seq_len
+
+            # model dimension must be divideable into equal parts for the attention heads
+            self.number_heads = number_heads
+            self.att_head_dim = int(model_dimension / number_heads)
+
+            # attention mechanism: Q, K, V are linear embeddings -> embedding matrix dim: (model_dimension x model_dimension)
+            self.Q = nn.Linear(model_dimension, model_dimension)
+            self.K = nn.Linear(model_dimension, model_dimension)
+            self.V = nn.Linear(model_dimension, model_dimension)
+            self.lin_output = nn.Linear(model_dimension, model_dimension)
+
+        def forward(self, Q, K, V, mask):
+            """
+            Forward pass trough MultiHeadAttention
+
+            Args:
+                Q (torch.Tensor): query
+                K (torch.Tensor): key
+                V (torch.Tensor): value
+                mask (torch.Tensor): mask for the padded tokens
+
+            Returns:
+                torch.Tensor: weighted embedding of input after multi-head Attention
+            """
+
+            def fit_attention_head(t, number_heads, att_head_dim):
+                """
+                Transform from (batch_size x seq_len x model_dimension)
+                to
+                (batch_size x number_heads x seq_len x att_head_dim)
+
+                Args:
+                    t (torch.Tensor): input tensor
+                    number_heads (int): number of attention heads
+                    att_head_dim (int): dimension of each attention head
+
+                Returns:
+                    torch.Tensor: reshaped tensor
+
+                """
+                t = t.view(self.batch_size, number_heads, self.seq_len, att_head_dim)
+                t = t.transpose(2, 3)
+                return t
+
+            Q = fit_attention_head(self.Q(Q), self.number_heads, self.att_head_dim)
+            K = fit_attention_head(self.K(K), self.number_heads, self.att_head_dim)
+            V = fit_attention_head(self.V(V), self.number_heads, self.att_head_dim)
+
+            # calculate dot product between each Q and each K and normaliz the output, output dim: (batch_size x number_heads x seq_len x seq_len)
+            score = torch.matmul(Q, K.transpose(2, 3))
+            score_n = score / math.sqrt(self.att_head_dim)  # normalize: <q,k>/sqrt(d_k)
+
+            # mask 0 with -infinity so it becomes 0 after softmax, output dim: (batch_size x number_heads x seq_len x seq_len)
+            score_m = score_n.masked_fill(mask == 0,
+                                          -np.inf)  # -> DELETE COMMENT: this is not for the pretraining masks but the padded tokens, they are 0 (see line 253)
+
+            # softmax scores along each Q, output dim: (batch_size x number_heads x seq_len x seq_len)
+            score_w = nn.functional.softmax(score_m, dim=-1)
+
+            # multiply with V matrix: output weighted sum for each Q, output dim: (batch_size x number_heads x seq_len x att_head_dim)
+            weighted_sum = torch.matmul(score_w, V)
+
+            # concatenate attention heads to 1 output, output dim: (batch_size x seq_len x model_dimension)
+            weighted_sum = weighted_sum.transpose(2, 3).reshape(self.batch_size, -1,
+                                                                self.number_heads * self.att_head_dim)
+
+            # linear embedding for output, output dim: (batch_size x seq_len x model_dimension)
+            out = self.lin_output(weighted_sum)
+            return out
+
+        # feedforward layer
+
+    class FeedForwardLayer(nn.Module):
+        """
+        Module for a feedforward layer
+
+        Args:
+            model_dimension (int): dimension of input vector
+            hidden_dimension (int): dimension of the hidden layer
+
+        Attributes:
+            linear1 (nn.Linear): transforms to hidden layer linearly
+            linear2 (nn.Linear): transforms from hidden layer to output linearly
+            non_linear (nn.ReLU): non-linear layer in the middle
+        """
+
+        def __init__(self, model_dimension, hidden_dimension):
+            """
+            Initializing FeedForwardLayer
+
+            Args:
+                model_dimension (int): dimension of input vector
+                hidden_dimension (int): dimension of the hidden layer
+
+            """
+            super(BERTBase.FeedForwardLayer, self).__init__()
+
+            # linear layer
+            self.linear1 = nn.Linear(model_dimension, hidden_dimension)
+            self.linear2 = nn.Linear(hidden_dimension, model_dimension)
+            # non-linearity
+            self.non_linear = nn.ReLU()
+
+        def forward(self, x):
+            """
+            Forward pass trough FeedForwardLayer
+
+            Args:
+                x (torch.Tensor): input tensor
+
+            Returns:
+                torch.Tensor: output of FeedForward layer
+            """
+            return self.linear2(self.non_linear(self.linear1(x)))
+
+            # encoder stacks together all the previous modules
+
+    class Encoder(nn.Module):
+        """
+        Puts together an encoder: MultiHeadAttention + feedforward layer + normalization layer
+
+        Args:
+            model_dimension (int): input dimension (default: EMBED_SIZE)
+            number_heads (int): number of attention heads (default: 12)
+            ff_hidden_dim (int): dimension of hidden layer in feedforward (default: EMBED_SIZE*4)
+
+        """
+
+        def __init__(self, model_dimension=EMBED_SIZE, number_heads=12, ff_hidden_dim=EMBED_SIZE * 4):
+            super(BERTBase.Encoder, self).__init__()
+            # attention heads
+            self.multihead_attention = BERTBase.MultiHeadAttention(number_heads, model_dimension, batch_size=BATCH_SIZE, seq_len=SEQ_LEN)
+            # normalisation layer
+            self.normlayer = nn.LayerNorm(model_dimension)
+            self.feedforward_layer = BERTBase.FeedForwardLayer(model_dimension, hidden_dimension=ff_hidden_dim)
+
+        def forward(self, x, mask):
+            """
+            Forward pass through Encoder
+
+            Args:
+                x (torch.Tensor): input tensor
+                mask (torch.Tensor): mask padded tokens
+
+            Returns:
+                torch.Tensor: output of encoder
+            """
+            # input x 3x to generate Q, K, V
+            x = self.normlayer(self.multihead_attention(x, x, x, mask))
+            return self.normlayer(self.feedforward_layer(x))
+
+        # base class for BERT
+
     def __init__(self, vocab_size, model_dimension, pretrained_model, number_layers, number_heads):
         """
         Initializes a the BERTBase model
@@ -235,7 +243,7 @@ class BERTBase(nn.Module):
         # stack encoders and apply the pretrained weights to the layers of the encoders
         self.encoders = torch.nn.ModuleList() # create empty module list
         for i in range(self.number_layers):
-            encoder = Encoder(model_dimension=model_dimension, number_heads=number_heads, ff_hidden_dim=4*model_dimension)
+            encoder = BERTBase.Encoder(model_dimension=model_dimension, number_heads=number_heads, ff_hidden_dim=4*model_dimension)
             encoder.load_state_dict(pretrained_model.encoder.layer[i].state_dict(), strict=False)
             self.encoders.append(encoder)
         
