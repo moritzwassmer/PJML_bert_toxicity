@@ -173,7 +173,7 @@ class BERTBase(nn.Module):
                         super(BERTBase.BertEncoder.BertLayer.BertAttention.BertSelfOutput, self).__init__()
 
                         # linear layer
-
+                        self.linear = nn.Linear(model_dimension, model_dimension)
                         self.normlayer = nn.LayerNorm(model_dimension)
                         # non-linearity
                         self.dropout = nn.Dropout(0.1)  # TODO hardcoded
@@ -188,7 +188,7 @@ class BERTBase(nn.Module):
                         Returns:
                             torch.Tensor: output of FeedForward layer
                         """
-                        return self.dropout(self.normlayer(x))
+                        return self.dropout(self.normlayer(self.linear(x)))
 
                 def __init__(self, seq_len=SEQ_LEN, model_dimension=EMBED_SIZE, number_heads=NUMBER_HEADS, ff_hidden_dim=EMBED_SIZE * 4):
 
@@ -223,6 +223,27 @@ class BERTBase(nn.Module):
                     """
                     return self.non_linear(self.linear(x))
 
+            class BertOutput(nn.Module):
+                def __init__(self, model_dimension=EMBED_SIZE, hidden_dimension=EMBED_SIZE * 4):
+                    super(BERTBase.BertEncoder.BertLayer.BertOutput, self).__init__()
+                    self.linear = nn.Linear(hidden_dimension, model_dimension)
+                    # non-linearity
+                    self.normlayer = nn.LayerNorm(model_dimension)
+                    self.dropout = nn.Dropout(0.1) # TODO hardcoded
+
+                def forward(self, x):
+                    """
+                    Forward pass trough BertSelfOutput
+
+                    Args:
+                        x (torch.Tensor): input tensor
+
+                    Returns:
+                        torch.Tensor: output of FeedForward layer
+                    """
+                    return self.dropout(self.normlayer(self.linear(x)))
+
+
             def __init__(self, seq_len=SEQ_LEN, model_dimension=EMBED_SIZE, number_heads=NUMBER_HEADS,
                          ff_hidden_dim=EMBED_SIZE * 4):
                 super(BERTBase.BertEncoder.BertLayer, self).__init__()
@@ -231,7 +252,11 @@ class BERTBase(nn.Module):
                 # normalisation layer
                 # self.normlayer = nn.LayerNorm(model_dimension)
                 self.bert_intermediate = BERTBase.BertEncoder.BertLayer.BertIntermediate() # TODO params
-                # self.dropout = nn.Dropout(0.1) # TODO hardcoded
+                # self.dropout = nn.Dropout(0.1)
+
+                self.bert_output = BERTBase.BertEncoder.BertLayer.BertOutput() # TODO Params
+
+
 
             def forward(self, x, mask):
                 """
@@ -247,6 +272,7 @@ class BERTBase(nn.Module):
 
                 x = self.bert_attention(x,mask)
                 x = self.bert_intermediate(x)
+                x = self.bert_output(x)
 
                 """x = self.normlayer(self.multihead_attention(x, x, x, mask))
                 x = self.normlayer(self.feedforward_layer(x)) # TODO WRONG
@@ -322,8 +348,9 @@ class BERTBase(nn.Module):
             # embedding of position
             self.position = BERTBase.BertEmbedding.PositionEmbedding(embed_size, seq_len)
             self.segment = nn.Embedding(3, embed_size, padding_idx=0)
-            self.dropout = torch.nn.Dropout(p=dropout)
             self.normlayer = nn.LayerNorm(embed_size)
+            self.dropout = torch.nn.Dropout(p=dropout)
+
 
         def forward(self, sequence, segments):
             #print(sequence.dtype)
