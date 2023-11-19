@@ -249,6 +249,7 @@ class BERTBase(nn.Module):
                 super(BERTBase.BertEncoder.BertLayer, self).__init__()
                 # attention heads
                 self.bert_attention = BERTBase.BertEncoder.BertLayer.BertAttention() # TODO params
+
                 # normalisation layer
                 # self.normlayer = nn.LayerNorm(model_dimension)
                 self.bert_intermediate = BERTBase.BertEncoder.BertLayer.BertIntermediate() # TODO params
@@ -271,8 +272,11 @@ class BERTBase(nn.Module):
                 """
 
                 x = self.bert_attention(x,mask)
+                #print(x)
                 x = self.bert_intermediate(x)
+                #print(x)
                 x = self.bert_output(x)
+                #print(x)
 
                 """x = self.normlayer(self.multihead_attention(x, x, x, mask))
                 x = self.normlayer(self.feedforward_layer(x)) # TODO WRONG
@@ -296,6 +300,8 @@ class BERTBase(nn.Module):
             # run trough encoders
             for encoder in self.encoders:
                 x = encoder.forward(x, mask)
+            return x
+
 
     class BertEmbedding(torch.nn.Module):
         """
@@ -381,14 +387,14 @@ class BERTBase(nn.Module):
             embedding (BertEmbedding): BERT embedding
         """
         super().__init__()
-        self.model_dimension=model_dimension
+        """self.model_dimension=model_dimension
         self.number_layers=number_layers
         self.number_heads=number_heads
         # hidden layer dimenion of FF is 4*model_dimension 
         self.ff_hidden_layer = 4*model_dimension
         # embedding of input
 
-        self.seq_len = seq_len
+        self.seq_len = seq_len"""
 
         self.embedding = BERTBase.BertEmbedding(vocab_size=vocab_size, seq_len=seq_len, embed_size=model_dimension)
         self.encoder = BERTBase.BertEncoder(model_dimension=model_dimension,number_layers=number_layers,number_heads=number_heads)
@@ -436,6 +442,7 @@ class BERTBase(nn.Module):
         x = self.embedding(words, segments)
         # run trough encoders
         x = self.encoder(x, mask)
+        #print(x)
         return x
     
 
@@ -524,7 +531,7 @@ class Model(nn.Module):
         # base BERT model
         self.base_model = BERTBase(vocab_size, model_dimension, use_pretrained, number_layers, number_heads)
         # toxic comment classfication layer
-        self.toxic_comment = ToxicityPredictionHead(self.base_model.model_dimension)
+        self.toxic_comment = ToxicityPredictionHead(model_dimension)
     
     def forward(self, words, segments):
         """
@@ -538,4 +545,5 @@ class Model(nn.Module):
 
         """
         x = self.base_model(words, segments)
+        #print(x)
         return self.toxic_comment(x)
