@@ -53,7 +53,7 @@ class BERTBase(nn.Module):
                 non_linear (nn.ReLU): non-linear layer in the middle
             """
 
-            def __init__(self, model_dimension=EMBED_SIZE, hidden_dimension=EMBED_SIZE):
+            def __init__(self, model_dimension=EMBED_SIZE, hidden_dimension=EMBED_SIZE * 4):
                 """
                 Initializing FeedForwardLayer
 
