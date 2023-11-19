@@ -44,25 +44,6 @@ class BERTBase(nn.Module):
             """
 
             class BertAttention(nn.Module):
-                class BertIntermediate(nn.Module):
-
-                    def __init__(self, model_dimension=EMBED_SIZE, hidden_dimension=EMBED_SIZE * 4):
-                        super(BERTBase.BertLayer.BertIntermediate, self).__init__()
-                        self.linear = nn.Linear(model_dimension, hidden_dimension)
-                        # non-linearity
-                        self.non_linear = nn.GELU()
-
-                    def forward(self, x):
-                        """
-                        Forward pass trough BertOutput
-
-                        Args:
-                            x (torch.Tensor): input tensor
-
-                        Returns:
-                            torch.Tensor: output of FeedForward layer
-                        """
-                        return self.non_linear(self.linear(x))
 
                 class BertSelfAttention(nn.Module):
                     """
@@ -166,7 +147,7 @@ class BERTBase(nn.Module):
 
                     # feedforward layer
 
-                class BertOutput(nn.Module):
+                class BertSelfOutput(nn.Module):
                     """
                     Module for a feedforward layer
 
@@ -182,14 +163,14 @@ class BERTBase(nn.Module):
 
                     def __init__(self, model_dimension=EMBED_SIZE, hidden_dimension=EMBED_SIZE * 4):
                         """
-                        Initializing BertOutput
+                        Initializing BertSelfOutput
 
                         Args:
                             model_dimension (int): dimension of input vector
                             hidden_dimension (int): dimension of the hidden layer
 
                         """
-                        super(BERTBase.BertLayer.BertOutput, self).__init__()
+                        super(BERTBase.BertLayer.BertSelfOutput, self).__init__()
 
                         # linear layer
 
@@ -199,7 +180,7 @@ class BERTBase(nn.Module):
 
                     def forward(self, x):
                         """
-                        Forward pass trough BertOutput
+                        Forward pass trough BertSelfOutput
 
                         Args:
                             x (torch.Tensor): input tensor
@@ -209,21 +190,45 @@ class BERTBase(nn.Module):
                         """
                         return self.dropout(self.normlayer(x))
 
-                def __init__(self):
-                    pass
+                def __init__(self, seq_len=SEQ_LEN, model_dimension=EMBED_SIZE, number_heads=NUMBER_HEADS, ff_hidden_dim=EMBED_SIZE * 4):
+                    self.bert_self_attention = BERTBase.BertLayer.BertSelfAttention(number_heads, model_dimension, seq_len=seq_len)
+                    self.bert_intermediate = BERTBase.BertLayer.BertIntermediate(model_dimension=EMBED_SIZE, hidden_dimension=EMBED_SIZE * 4)
+                    self.bert_self_output = BERTBase.BertLayer.BertSelfOutput(model_dimension=EMBED_SIZE, hidden_dimension=EMBED_SIZE * 4)
+
+                def forward(self, x, mask): # TODO unsure about this forward pass
+
+                    x = self.bert_self_attention(x,x,x, mask)
+                    x = self.bert_self_output(x)
+                    return x
+
+            class BertIntermediate(nn.Module):
+
+                def __init__(self, model_dimension=EMBED_SIZE, hidden_dimension=EMBED_SIZE * 4):
+                    super(BERTBase.BertLayer.BertIntermediate, self).__init__()
+                    self.linear = nn.Linear(model_dimension, hidden_dimension)
+                    # non-linearity
+                    self.non_linear = nn.GELU()
 
                 def forward(self, x):
-                    pass
+                    """
+                    Forward pass trough BertSelfOutput
+
+                    Args:
+                        x (torch.Tensor): input tensor
+
+                    Returns:
+                        torch.Tensor: output of FeedForward layer
+                    """
+                    return self.non_linear(self.linear(x))
 
             def __init__(self, seq_len=SEQ_LEN, model_dimension=EMBED_SIZE, number_heads=NUMBER_HEADS,
                          ff_hidden_dim=EMBED_SIZE * 4):
                 super(BERTBase.BertLayer, self).__init__()
                 # attention heads
-                self.multihead_attention = BERTBase.BertLayer.BertSelfAttention(number_heads, model_dimension,
-                                                                                seq_len=seq_len)
+                self.bert_attention = BERTBase.BertLayer.BertAttention() # TODO params
                 # normalisation layer
                 # self.normlayer = nn.LayerNorm(model_dimension)
-                self.feedforward_layer = BERTBase.BertLayer.BertOutput(model_dimension, hidden_dimension=ff_hidden_dim)
+                self.bert_intermediate = BERTBase.BertLayer.BertIntermediate() # TODO params
                 # self.dropout = nn.Dropout(0.1) # TODO hardcoded
 
             def forward(self, x, mask):
@@ -237,10 +242,13 @@ class BERTBase(nn.Module):
                 Returns:
                     torch.Tensor: output of encoder
                 """
-                # input x 3x to generate Q, K, V
-                x = self.normlayer(self.multihead_attention(x, x, x, mask))
-                x = self.normlayer(self.feedforward_layer(x))
-                x = self.dropout(x)
+
+                x = self.bert_attention(x,mask)
+                x = self.bert_intermediate(x)
+
+                """x = self.normlayer(self.multihead_attention(x, x, x, mask))
+                x = self.normlayer(self.feedforward_layer(x)) # TODO WRONG
+                x = self.dropout(x)"""
                 return x
 
             # base class for BERT
