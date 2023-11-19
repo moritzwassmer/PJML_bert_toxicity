@@ -251,6 +251,7 @@ class BERTBase(nn.Module):
         def forward(self, sequence):
             return self.token(sequence) + self.position(sequence)
 
+    # TODO default parameters here, not in inner classes
     def __init__(self, vocab_size, model_dimension, pretrained_model, number_layers, number_heads, seq_len=SEQ_LEN):
         """
         Initializes a the BERTBase model
