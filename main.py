@@ -78,7 +78,8 @@ def main():
     # Training (for cluster)
 
     # load the entire training data (length dataset_length) into train
-    train_loader, _ = load_data("jigsaw_toxicity_pred", transformation=tokenizer, n_train=TRAIN_LENGTH, n_test=None, batch_size=BATCH_SIZE, shuffle=True)
+    train_loader, test_dataloader = load_data("jigsaw_toxicity_pred", transformation=tokenizer, n_train=TRAIN_LENGTH,
+                                              n_test=TEST_LENGTH, batch_size=BATCH_SIZE, shuffle=True)
     # train, _ = load_data("jigsaw_toxicity_pred", transformation=tokenizer, n_train=128, n_test=None)
 
     # set up BERT model with toxic multilabel classification head
@@ -86,7 +87,7 @@ def main():
 
     # train model (device to be updated according to cluster GPU)
     #__init__(self, model, train_dataloader, epochs, test_dataloader=None, learning_rate=0.001, threshold=0.01,device=DEVICE):
-    training.TrainBERT(berti, train_loader, EPOCHS, device=DEVICE)
+    training.TrainBERT(berti, train_loader, EPOCHS, device=DEVICE, test_dataloader=test_dataloader)
 
 
 if __name__ == "__main__":

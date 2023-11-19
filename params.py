@@ -7,7 +7,8 @@ TOXIC = r"C:\Users\morit\OneDrive\UNI\Master\WS23\PML\repo\bert_from_scratch.tox
 
 ### RUN SPECIFIC
 N_SEGMENTS = 3 # number of segmentation labels
-TRAIN_LENGTH = 10000# 159571 # length of training set
+TRAIN_LENGTH = 100# 159571 # length of training set
+TEST_LENGTH = 100
 DEVICE= 'cuda' if torch.cuda.is_available() else 'cpu'
 BATCH_SIZE = 64 # 512
 EPOCHS = 3 # 10

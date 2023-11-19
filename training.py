@@ -40,6 +40,7 @@ class TrainBERT:
         # run training
         for epoch in range(self.epochs):
             self.training(epoch)
+            self.testing(epoch)
     
     def write_results(self, output, file):
         with open(file, "a") as file:
@@ -102,5 +103,51 @@ class TrainBERT:
         self.bar.n = 0
         self.bar.last_print_n = 0
         self.bar.refresh()
+
+    def testing(self, epoch): # TODO Chatgpt
+        # Set the model to evaluation mode
+        self.model.eval()
+
+        # Initialize stats for testing
+        avg_loss = 0.0
+        corrects_sum = 0
+        total = 0
+        zero_prediction = 0
+
+        with torch.no_grad():
+            for i, data in enumerate(self.testing_data):
+                # send data to GPU/CPU
+                data = {key: value.to(self.device) for key, value in data.items()}
+
+                # labels convert to float()
+                labels = data['labels'].to(torch.float)
+
+                # forward pass: comments through model
+                output = self.model.forward(data['input'], data["segment"])
+
+                loss = self.criterion(output, labels)
+
+                avg_loss += loss.item()
+
+                # compute accuracy
+                # use threshold to determine which of the outputs are considered True
+                predictions = torch.ge(output, self.threshold).int()
+                # compare with the label and count correct classifications
+                corrects_sum += (predictions == labels).sum().item()
+                # check whether model is only predicting 0
+                zero_prediction += ((predictions == 0) & (labels == 0)).sum().item()
+                # sum up total number of labels in batch
+                total += labels.nelement()
+
+        # print stats for testing
+        output = "\nTesting epoch: {}\nAvg. testing loss: {:.2f}\nAccuracy: {:.2f}\nCorrect predictions: {} of which the model predicted 'False': {}".format(
+            epoch + 1, avg_loss / len(self.testing_data), corrects_sum / total, corrects_sum, zero_prediction)
+        print(output)
+
+        # write results
+        self.write_results(output, "testing_results")
+
+        # Set the model back to training mode
+        self.model.train()
 
 
