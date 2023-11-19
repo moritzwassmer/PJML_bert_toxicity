@@ -86,7 +86,7 @@ def main():
     # train, _ = load_data("jigsaw_toxicity_pred", transformation=tokenizer, n_train=128, n_test=None)
 
     # set up BERT model with toxic multilabel classification head
-    berti = models.ToxicBERT(vocab_size=VOCAB_SIZE, model_dimension=EMBED_SIZE, pretrained_model=pretrained_model, number_layers=12, number_heads=12)
+    berti = models.Model(vocab_size=VOCAB_SIZE, model_dimension=EMBED_SIZE, pretrained_model=pretrained_model, number_layers=12, number_heads=12)
 
     # train model (device to be updated according to cluster GPU)
     training.TrainBERT(berti, train_loader, EPOCHS, device=DEVICE)

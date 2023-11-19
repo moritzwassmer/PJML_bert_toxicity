@@ -351,7 +351,7 @@ class ToxicityPrediction(nn.Module):
 
 
 # TASK SHEET: model class    
-class ToxicBERT(nn.Module):
+class Model(nn.Module):
     """
     BERT-based model for toxic comment classification, consists of a base BERT model for feature extraction and a task-specific head for toxic comment classification
 
