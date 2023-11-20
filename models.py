@@ -33,18 +33,10 @@ class BERTBase(nn.Module):
     class BertEncoder(nn.Module):
 
         class BertLayer(nn.Module):
-            """
-            Puts together an encoder: BertSelfAttention + feedforward layer + normalization layer
-
-            Args:
-                model_dimension (int): input dimension (default: EMBED_SIZE)
-                number_heads (int): number of attention heads (default: 12)
-                ff_hidden_dim (int): dimension of hidden layer in feedforward (default: EMBED_SIZE*4)
-
-            """
+            # TODO Doc
 
             class BertAttention(nn.Module):
-
+                # TODO Doc
                 class BertSelfAttention(nn.Module):
                     """
                     Module for multi-headed Attention
@@ -63,6 +55,7 @@ class BERTBase(nn.Module):
                     """
 
                     def __init__(self, number_heads, model_dimension, seq_len):
+                        # TODO
                         """
                         Initializing BertSelfAttention
 
@@ -70,7 +63,7 @@ class BERTBase(nn.Module):
                             number_heads (int): total number of attention heads
                             model_dimension (int): input dimension of the model
                         """
-                        super(BERTBase.BertEncoder.BertLayer.BertAttention.BertSelfAttention, self).__init__()
+                        super().__init__()
 
                         self.seq_len = seq_len
 
@@ -145,9 +138,8 @@ class BERTBase(nn.Module):
                         out = self.dropout(weighted_sum)
                         return out
 
-                    # feedforward layer
-
                 class BertSelfOutput(nn.Module):
+                    # TODO DOc
                     """
                     Module for a feedforward layer
 
@@ -170,7 +162,7 @@ class BERTBase(nn.Module):
                             hidden_dimension (int): dimension of the hidden layer
 
                         """
-                        super(BERTBase.BertEncoder.BertLayer.BertAttention.BertSelfOutput, self).__init__()
+                        super().__init__()
 
                         # linear layer
                         self.linear = nn.Linear(model_dimension, model_dimension)
@@ -192,10 +184,9 @@ class BERTBase(nn.Module):
 
                 def __init__(self, seq_len=SEQ_LEN, model_dimension=EMBED_SIZE, number_heads=NUMBER_HEADS, ff_hidden_dim=EMBED_SIZE * 4):
 
-                    super(BERTBase.BertEncoder.BertLayer.BertAttention, self).__init__()
-                    self.bert_self_attention = BERTBase.BertEncoder.BertLayer.BertAttention.BertSelfAttention(number_heads, model_dimension, seq_len=seq_len)
-                    #self.bert_intermediate = BERTBase.BertEncoder.BertLayer.BertIntermediate(model_dimension=EMBED_SIZE, hidden_dimension=EMBED_SIZE * 4)
-                    self.bert_self_output = BERTBase.BertEncoder.BertLayer.BertAttention.BertSelfOutput(model_dimension=EMBED_SIZE, hidden_dimension=EMBED_SIZE * 4)
+                    super().__init__()
+                    self.bert_self_attention = BERTBase.BertEncoder.BertLayer.BertAttention.BertSelfAttention(number_heads=number_heads, model_dimension=model_dimension, seq_len=seq_len)
+                    self.bert_self_output = BERTBase.BertEncoder.BertLayer.BertAttention.BertSelfOutput(model_dimension=model_dimension, hidden_dimension=model_dimension * 4)
 
                 def forward(self, x, mask): # TODO unsure about this forward pass
 
@@ -204,9 +195,10 @@ class BERTBase(nn.Module):
                     return x
 
             class BertIntermediate(nn.Module):
+                # TODO DOc
 
                 def __init__(self, model_dimension=EMBED_SIZE, hidden_dimension=EMBED_SIZE * 4):
-                    super(BERTBase.BertEncoder.BertLayer.BertIntermediate, self).__init__()
+                    super().__init__()
                     self.linear = nn.Linear(model_dimension, hidden_dimension)
                     # non-linearity
                     self.non_linear = nn.GELU()
@@ -224,8 +216,9 @@ class BERTBase(nn.Module):
                     return self.non_linear(self.linear(x))
 
             class BertOutput(nn.Module):
+                # TODO docs
                 def __init__(self, model_dimension=EMBED_SIZE, hidden_dimension=EMBED_SIZE * 4):
-                    super(BERTBase.BertEncoder.BertLayer.BertOutput, self).__init__()
+                    super().__init__()
                     self.linear = nn.Linear(hidden_dimension, model_dimension)
                     # non-linearity
                     self.normlayer = nn.LayerNorm(model_dimension)
@@ -289,7 +282,7 @@ class BERTBase(nn.Module):
 
             super().__init__()
 
-            # INIT ENCODERS
+            # init encoder layers
             self.encoders = torch.nn.ModuleList()  # create empty module list
             for i in range(number_layers):
                 encoder = BERTBase.BertEncoder.BertLayer(model_dimension=model_dimension, number_heads=number_heads,
@@ -418,10 +411,9 @@ class BERTBase(nn.Module):
 
         # mask to mark the padded (0) tokens
         mask = (words > 0).unsqueeze(1).repeat(1,words.size(1),1).unsqueeze(1)
-        segments = (words > 0).to(torch.int).cuda() # create segment embeddings # TODO check if 1 is correct
+        segments = (words > 0).to(torch.int).cuda() # create segment embeddings (1s if words exist else padding so 0) # TODO check if 1 is correct
 
         x = self.embedding(words, segments)
-        #print(x)
         # run trough encoders
         x = self.encoder(x, mask)
 
