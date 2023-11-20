@@ -7,11 +7,11 @@ TOXIC = r"C:\Users\morit\OneDrive\UNI\Master\WS23\PML\repo\bert_from_scratch.tox
 
 ### RUN SPECIFIC
 
-TRAIN_LENGTH = 64# 159571 # length of training set
-TEST_LENGTH = 64
+TRAIN_LENGTH = 10000# 159571 # length of training set
+TEST_LENGTH = 1024
 DEVICE= 'cuda' if torch.cuda.is_available() else 'cpu'
 BATCH_SIZE = 64 # 512
-EPOCHS = 1 # 10
+EPOCHS = 3 # 10
 
 ### MODEL OR TOKENIZER SPECIFIC
 N_SEGMENTS = 2 # number of segmentation labels

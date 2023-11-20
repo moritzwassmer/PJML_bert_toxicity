@@ -239,7 +239,7 @@ class BERTBase(nn.Module):
 
             def __init__(self, seq_len=SEQ_LEN, model_dimension=EMBED_SIZE, number_heads=NUMBER_HEADS,
                          ff_hidden_dim=EMBED_SIZE * 4):
-                super(BERTBase.BertEncoder.BertLayer, self).__init__()
+                super().__init__()
                 # attention heads
                 self.bert_attention = BERTBase.BertEncoder.BertLayer.BertAttention() # TODO params
 
@@ -264,7 +264,7 @@ class BERTBase(nn.Module):
                     torch.Tensor: output of encoder
                 """
 
-                x = self.bert_attention(x,mask)
+                x = self.bert_attention(x, mask)
 
                 x = self.bert_intermediate(x)
 
@@ -379,15 +379,12 @@ class BERTBase(nn.Module):
         """
 
     def load_from_pretrained(self):
-        # TODO finish
-
-        # Download pretrained weights from huggingface (for the base BERT)
+        # TODO implement
+        pass
+        """# Download pretrained weights from huggingface (for the base BERT)
         bert_base = "bert-base-uncased"
         configuration = BertConfig.from_pretrained(bert_base)
         pretrained_model = BertModel.from_pretrained(bert_base, config=configuration)
-
-        # TODO Embedding layers
-
 
         # stack encoders and apply the pretrained weights to the layers of the encoders
         self.encoders = torch.nn.ModuleList()  # create empty module list
@@ -395,7 +392,7 @@ class BERTBase(nn.Module):
             pretrained_encoder = pretrained_model.encoder.layer[i].state_dict()
             encoder = self.encoders[i]
             encoder = encoder.load_state_dict(pretrained_encoder, strict=False)
-            self.encoders.insert(i,encoder)
+            self.encoders.insert(i,encoder)"""
 
     def forward(self, words):
         """
