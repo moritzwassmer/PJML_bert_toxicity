@@ -442,6 +442,7 @@ class BERTBase(nn.Module):
     
 
     # finetuning
+
 class ToxicityPredictionHead(nn.Module):
     """
     Head for toxicity classification
@@ -455,7 +456,7 @@ class ToxicityPredictionHead(nn.Module):
         sigmoid (nn.Sigmoid): sigmoid function for multi-label classification
 
     """
-    def __init__(self, bert_out):
+    def __init__(self, bert_out=EMBED_SIZE):
         """
         Initializes the ToxicityPredictionHead model
 
@@ -469,10 +470,10 @@ class ToxicityPredictionHead(nn.Module):
 
         """
         super().__init__()
-        self.tox_classes = 6 # there are 6 classes of toxicity in the dataset # TODO changed to 7 for nothing class
+        self.tox_classes = 6 # there are 6 classes of toxicity in the dataset
         self.linear = nn.Linear(bert_out, self.tox_classes)
         # multilabel classification taks output is probiability of beloning to a class for each component of the output vector seperately 
-        self.sigmoid = nn.Sigmoid()
+        #self.sigmoid = nn.Sigmoid() # TODO sigmoid not used for BCE with logits
         
     def forward(self, x):
         """
@@ -486,8 +487,8 @@ class ToxicityPredictionHead(nn.Module):
 
         """
         # recieve output dimension (batch_size, self.tox_classes)
+        x = self.linear(x[:, 0]) # only extract cls embedding (at beginning)
 
-        x = self.linear(x[:, 0])
         #x = self.sigmoid(x) # TODO commented out due to BCELossWithLogits, does combine sigmoid with BCE loss in one class, also multilabel classification
         return x
 
