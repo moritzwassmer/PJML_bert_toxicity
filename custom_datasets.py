@@ -40,21 +40,18 @@ class ToxicComment(Dataset):
         )["input_ids"]#.to(DEVICE) # TODO
         
         # flatten output
-        output["input"] = output["input"].squeeze().to(torch.long) # TODO
+        output["input"] = output["input"].squeeze().to(torch.long)
         
         output.pop("comment_text") # remove otherwise non tensor in dictionary
         
         # Step 3: add segment_label like in pretraining task for consistency  TODO 1s for non padded elements only
         output["segment"] = torch.ones(self.seq_len,dtype=torch.long)
         
-        # Step 4: collect different labels to one tensor # TODO created one more class if nothing of the following classes
-        asdf = [output[key] if isinstance(output[key], torch.Tensor) else torch.tensor([output[key]]) for key in
-                ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']] # TODO watch out for order in params
-        all_zero = torch.sum(torch.cat(asdf)) == 0
-        if all_zero:
-            labels = torch.cat([torch.zeros(1)] + asdf,dim=-1)
-        else:
-            labels = torch.cat([torch.ones(1)] + asdf,dim=-1)
+        # Step 4: collect different labels to one tensor
+        labels = [output[key] if isinstance(output[key], torch.Tensor) else torch.tensor([output[key]]) for key in
+                ORDER]
+
+        labels = torch.cat(labels, dim=-1)
         output["labels"] = labels.to(DEVICE)
         
         return output
