@@ -67,7 +67,7 @@ class TrainBERT:
             labels = data['labels'].to(torch.float)
 
             # forward pass: comments trough model
-            preds = self.model.forward(data['input'], data["segment"])
+            preds = self.model.forward(data['input'])
             loss = self.criterion(preds, labels)
             avg_loss += loss.item()
 
@@ -127,7 +127,7 @@ class TrainBERT:
                 labels = data['labels'].to(torch.float)
 
                 # forward pass: comments through model
-                preds = self.model.forward(data['input'], data["segment"])
+                preds = self.model.forward(data['input'])
 
                 loss = self.criterion(preds, labels)
 

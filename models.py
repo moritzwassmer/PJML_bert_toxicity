@@ -302,7 +302,6 @@ class BERTBase(nn.Module):
                 x = encoder.forward(x, mask)
             return x
 
-
     class BertEmbedding(torch.nn.Module):
         """
             BertEmbedding is a module that combines token embeddings and positional embeddings for input sequences.
@@ -366,23 +365,7 @@ class BERTBase(nn.Module):
 
     def __init__(self, vocab_size=VOCAB_SIZE, model_dimension=EMBED_SIZE, use_pretrained=True,
                  number_layers=NUMBER_LAYERS, number_heads=NUMBER_HEADS, seq_len=SEQ_LEN):
-        """
-        Initializes a the BERTBase model
 
-        Parameters:
-            vocab_size (int): size of the vocabulary
-            model_dimension (int): model dimension
-            pretrained_model (str): path of the pretrained model # TODO wrong
-            number_layers (int): number of transformer layers
-            number_heads (int): number of attention heads
-
-        Attributes:
-            model_dimension (int): dimensionality of the model
-            number_layers (int): number of transformer layers
-            number_heads (int): number of attention heads
-            ff_hidden_layer (int): hidden layer dimension of feedforward module (4 * model_dimension)
-            embedding (BertEmbedding): BERT embedding
-        """
         super().__init__()
         """self.model_dimension=model_dimension
         self.number_layers=number_layers
@@ -421,20 +404,24 @@ class BERTBase(nn.Module):
             encoder = encoder.load_state_dict(pretrained_encoder, strict=False)
             self.encoders.insert(i,encoder)
 
-    def forward(self, words, segments):
+    def forward(self, words):
         """
         Forward pass of the BERTBase model
 
         Parameters:
-            x (torch.Tensor): input tensor
+            words (torch.Tensor): word tokens
+            segments (torch.Tensor): segment tokens
 
         Returns:
             torch.Tensor: output tensor
         """
-        # mask to mark the padded (0) tokens TODO understood correctly?
-        mask = (words > 0).unsqueeze(1).repeat(1,words.size(1),1).unsqueeze(1) # TODO commented out
+
+        # mask to mark the padded (0) tokens
+        mask = (words > 0).unsqueeze(1).repeat(1,words.size(1),1).unsqueeze(1)
+        segments = (words > 0).to(torch.int).cuda() # create segment embeddings # TODO check if 1 is correct
 
         x = self.embedding(words, segments)
+        #print(x)
         # run trough encoders
         x = self.encoder(x, mask)
 
@@ -532,7 +519,7 @@ class Model(nn.Module):
         # toxic comment classfication layer
         self.toxic_comment = ToxicityPredictionHead(model_dimension)
     
-    def forward(self, words, segments):
+    def forward(self, words):
         """
         Forward pass of the model
 
@@ -543,6 +530,6 @@ class Model(nn.Module):
             torch.Tensor: output tensor 
 
         """
-        x = self.base_model(words, segments)
+        x = self.base_model(words)
 
         return self.toxic_comment(x)

@@ -11,7 +11,7 @@ TRAIN_LENGTH = 64# 159571 # length of training set
 TEST_LENGTH = 64
 DEVICE= 'cuda' if torch.cuda.is_available() else 'cpu'
 BATCH_SIZE = 64 # 512
-EPOCHS = 50 # 10
+EPOCHS = 10 # 10
 
 ### MODEL OR TOKENIZER SPECIFIC
 NUMBER_LAYERS = 12
