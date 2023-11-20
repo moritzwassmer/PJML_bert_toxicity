@@ -7,7 +7,7 @@ from tqdm import tqdm
 from params import *
 
 class TrainBERT:
-    def __init__(self, model, train_dataloader, epochs, test_dataloader=None, learning_rate=0.001, threshold=0.5, device=DEVICE): # TODO changed thrshold
+    def __init__(self, model, train_dataloader, epochs, test_dataloader=None, learning_rate=0.001, threshold=0.5, device=DEVICE, class_weights=WEIGHTS_LIST):
         
         # hyperparameters for optimization
         self.device = device
@@ -25,11 +25,11 @@ class TrainBERT:
         # learning rate scheduler
         self.scheduler = StepLR(self.optimizer, step_size=5, gamma=0.1)
 
-        # cost function binary cross entropy loss for predicting each beloning to a class seperately
+        # loss treats every output as an own random variable
         self.criterion = nn.BCEWithLogitsLoss(
             reduction="mean",
-            pos_weight=torch.Tensor(WEIGHTS_LIST).cuda() # TODO added 1 class for nothing
-        ) # TODO Hardcoded
+            pos_weight=torch.Tensor(class_weights).cuda()
+        )
         
         # predictions threshold above which predictions are set True
         self.threshold = threshold 
@@ -49,12 +49,12 @@ class TrainBERT:
     def training(self, epoch):
         # init stats
         avg_loss = 0.0
-        corrects_sum = 0
+        T = 0
         total = 0
-        zero_prediction = 0
-        one_prediction = 0
-        positives = 0
-        positives_not_nothing = 0
+        TN = 0
+        TP = 0
+        P = 0
+        P_not_clean = 0
 
         for i, data in enumerate(self.training_data):
             
@@ -67,17 +67,9 @@ class TrainBERT:
             # labels convert to float()
             labels = data['labels'].to(torch.float)
 
-            #print(labels.shape)
-            
             # forward pass: comments trough model
-            output = self.model.forward(data['input'], data["segment"])
-
-            #print(output)
-
-            #print(output.shape)
-
-            loss = self.criterion(output, labels)
-
+            preds = self.model.forward(data['input'], data["segment"])
+            loss = self.criterion(preds, labels)
             avg_loss += loss.item()
 
             # backward pass for training
@@ -85,25 +77,27 @@ class TrainBERT:
             loss.backward()
             self.optimizer.step()
             
-            # compute accuracy 
-            # use threshold to determine which of the outputs are considered True
+            # COMPUTE METRICS
+            # Since we removed the last sigmoid activation function due to using the BCE loss with logits,
+            # we need to pass the model output through a sigmoid activation to obtain probabilities
             sigmoid = torch.nn.Sigmoid()
-            output = sigmoid(output)  # TODO for inference due to BCE with logits we need to apply sigmoid manually
-            predictions = torch.ge(output, self.threshold).int()
+            preds = sigmoid(preds)  # TODO for inference due to BCE with logits we need to apply sigmoid manually
+            preds_th = torch.ge(preds, self.threshold).int()
+
             # compare with the label and count correct classifications
-            corrects_sum += (predictions == labels).sum().item()
+            T += (preds_th == labels).sum().item()
             # check whether model is only predicting 0
-            zero_prediction += ((predictions == 0) & (labels == 0)).sum().item()
-            one_prediction += ((predictions == 1) & (labels == 1)).sum().item()
-            positives += (labels == 1).sum().item()
-            positives_not_nothing += (labels[:,1:labels.shape[1]] == 1).sum().item()
+            TN += ((preds_th == 0) & (labels == 0)).sum().item()
+            TP += ((preds_th == 1) & (labels == 1)).sum().item()
+            P += (labels == 1).sum().item()
+            P_not_clean += (labels[:,1:labels.shape[1]] == 1).sum().item()
             # sump up total number of labels in batch
             total += labels.nelement()
         
         # update learning rate scheduler
         self.scheduler.step() 
         # print stats
-        message ="\nTraining epoch: {}\nAvg. training loss: {:.2f}\nAccuracy: {:.2f}\nCorrect predictions: {} of which the model predicted 'False': {}, true positives={}, positives={}, positives_not_nothing={}".format(epoch+1, avg_loss / len(self.training_data), corrects_sum / total, corrects_sum, zero_prediction, one_prediction, positives, positives_not_nothing)
+        message ="\nTraining epoch: {}\nAvg. training loss: {:.2f}\nAccuracy: {:.2f}\nCorrect predictions: {} of which the model predicted 'False': {}, true positives={}, positives={}, positives_not_nothing={}".format(epoch+1, avg_loss / len(self.training_data), T / total, T, TN, TP, P, P_not_clean)
         print(message)
 
         # write in results
@@ -122,9 +116,9 @@ class TrainBERT:
         avg_loss = 0.0
         corrects_sum = 0
         total = 0
-        zero_prediction = 0
-        one_prediction = 0
-        positives = 0
+        TF = 0
+        TP = 0
+        P = 0
 
         with torch.no_grad():
             for i, data in enumerate(self.testing_data):
@@ -135,29 +129,29 @@ class TrainBERT:
                 labels = data['labels'].to(torch.float)
 
                 # forward pass: comments through model
-                output = self.model.forward(data['input'], data["segment"])
+                preds = self.model.forward(data['input'], data["segment"])
 
-                loss = self.criterion(output, labels)
+                loss = self.criterion(preds, labels)
 
                 avg_loss += loss.item()
 
                 # compute accuracy
                 # use threshold to determine which of the outputs are considered True
                 sigmoid = torch.nn.Sigmoid()
-                output =  sigmoid(output)# TODO for inference due to BCE with logits we need to apply sigmoid manually
-                predictions = torch.ge(output, self.threshold).int() # TODO was self.threshold
+                preds =  sigmoid(preds)
+                predictions = torch.ge(preds, self.threshold).int()
                 # compare with the label and count correct classifications
                 corrects_sum += (predictions == labels).sum().item()
                 # check whether model is only predicting 0
-                zero_prediction += ((predictions == 0) & (labels == 0)).sum().item()
-                one_prediction += ((predictions == 1) & (labels == 1)).sum().item()
-                positives += (labels == 1).sum().item()
+                TF += ((predictions == 0) & (labels == 0)).sum().item()
+                TP += ((predictions == 1) & (labels == 1)).sum().item()
+                P += (labels == 1).sum().item()
                 # sum up total number of labels in batch
                 total += labels.nelement()
 
         # print stats for testing
         message = "\nTesting epoch: {}\nAvg. testing loss: {:.2f}\nAccuracy: {:.2f}\nCorrect predictions: {} of which the model predicted 'False': {}, true positives={}, positives = {}".format(
-            epoch + 1, avg_loss / len(self.testing_data), corrects_sum / total, corrects_sum, zero_prediction, one_prediction, positives)
+            epoch + 1, avg_loss / len(self.testing_data), corrects_sum / total, corrects_sum, TF, TP, P)
         print(message)
 
         # write results
