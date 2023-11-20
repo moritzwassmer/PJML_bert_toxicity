@@ -58,7 +58,7 @@ class BERTBase(nn.Module):
 
                         def prep_attention(t):
                             # TODO Doc
-                            t.view(batch_size, -1, NUMBER_HEADS, d_k).permute(0, 2, 1, 3)
+                            t = t.view(batch_size, -1, NUMBER_HEADS, d_k).permute(0, 2, 1, 3)
                             return t
 
                         Q, K, V  = prep_attention(Q), prep_attention(K), prep_attention(V)
