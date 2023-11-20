@@ -50,9 +50,6 @@ class BERTBase(nn.Module):
                         self.output_linear = nn.Linear(EMBED_SIZE, EMBED_SIZE)
 
                     def forward(self, Q, K, V, mask):
-
-                        Q, K, V = self.query(Q), self.key(K), self.value(V)
-
                         d_k = EMBED_SIZE // NUMBER_HEADS
                         batch_size = Q.shape[0]
 
@@ -61,6 +58,7 @@ class BERTBase(nn.Module):
                             t = t.view(batch_size, -1, NUMBER_HEADS, d_k).permute(0, 2, 1, 3)
                             return t
 
+                        Q, K, V = self.query(Q), self.key(K), self.value(V)
                         Q, K, V  = prep_attention(Q), prep_attention(K), prep_attention(V)
 
                         # z = Q*K / sqrt(d_k)
