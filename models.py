@@ -101,11 +101,10 @@ class BERTBase(nn.Module):
                 def __init__(self):
 
                     super().__init__()
-                    #self.bert_self_attention = BERTBase.BertEncoder.BertLayer.BertAttention.BertSelfAttention()
-                    self.bert_self_attention = BERTBase.BertEncoder.BertLayer.BertAttention.BertSelfAttention() # TODO
+                    self.bert_self_attention = BERTBase.BertEncoder.BertLayer.BertAttention.BertSelfAttention()
                     self.bert_self_output = self.BertSelfOutput()
 
-                def forward(self, x, mask): # TODO unsure about this forward pass
+                def forward(self, x, mask):
 
                     x = self.bert_self_attention(x,x,x, mask)
                     x = self.bert_self_output(x)
