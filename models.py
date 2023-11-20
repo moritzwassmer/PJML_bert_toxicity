@@ -11,39 +11,44 @@ from transformers import BertModel, BertConfig # ONLY USED TO GET PRETRAINED CLA
 
 
 class BERTBase(nn.Module):
+    """
+    Base class for BERT model. We made sure to implement the same nested structure such as the state dict of bert-base-uncased
+    from huggingface to have an easier time loading the weights. https://huggingface.co/bert-base-uncased
+
+    check params.py for constants
+
+    Args:
+        use_pretrained (bool, optional): Whether to load pretrained weights from Hugging Face. Default is True.
+    """
 
     class BertEncoder(nn.Module):
 
         class BertLayer(nn.Module):
 
             class BertAttention(nn.Module):
+                """
+                BERT Attention module, including multi-headed self-attention and an output layer
+
+                Attributes:
+                    bert_self_attention (BertSelfAttention): Multi-headed self-attention mechanism.
+                    bert_self_output (BertSelfOutput): Output layer for the self-attention mechanism.
+                """
 
                 class BertSelfAttention(nn.Module):
                     """
-                    Module for multi-headed Attention
-
-                    Args:
-                        number_heads (int): number of attention heads
-                        model_dimension (int): input dimension of the model
+                    Module for multi-headed Attention.
 
                     Attributes:
-                        number_heads (int): total number of attention heads
-                        att_head_dim (int): input dimension of each attention head
-                        Q (nn.Linear): query layer for Attention
-                        K (nn.Linear): key layer for Attention
-                        V (nn.Linear): value layer for Attention
-                        lin_output (nn.Linear): linear layer for the output of Attention
+                        number_heads (int): Total number of attention heads.
+                        att_head_dim (int): Input dimension of each attention head.
+                        Q (nn.Linear): Query layer for Attention.
+                        K (nn.Linear): Key layer for Attention.
+                        V (nn.Linear): Value layer for Attention.
+                        lin_output (nn.Linear): Linear layer for the output of Attention.
                     """
 
                     def __init__(self):
-                        # TODO
-                        """
-                        Initializing BertSelfAttention
 
-                        Args:
-                            number_heads (int): total number of attention heads
-                            model_dimension (int): input dimension of the model
-                        """
                         super().__init__()
 
                         # attention mechanism: Q, K, V are linear embeddings -> embedding matrix dim: (model_dimension x model_dimension)
@@ -53,18 +58,7 @@ class BERTBase(nn.Module):
                         self.dropout = nn.Dropout(DROPOUT)  # TODO hardcoded
 
                     def forward(self, Q, K, V, mask):
-                        """
-                        Forward pass trough BertSelfAttention
 
-                        Args:
-                            Q (torch.Tensor): query
-                            K (torch.Tensor): key
-                            V (torch.Tensor): value
-                            mask (torch.Tensor): mask for the padded tokens
-
-                        Returns:
-                            torch.Tensor: weighted embedding of input after multi-head Attention
-                        """
                         batch_size = Q.shape[0]  # infer batch_size dynamically
 
                         def fit_attention_head(t, number_heads, att_head_dim, batch_size):
@@ -116,6 +110,14 @@ class BERTBase(nn.Module):
                         return out
 
                 class BertSelfOutput(nn.Module):
+                    """
+                    Output layer for the self-attention mechanism.
+
+                    Attributes:
+                        linear (nn.Linear): Linear layer
+                        normlayer (nn.LayerNorm): Layer normalization
+                        dropout (nn.Dropout): Dropout layer
+                    """
 
                     def __init__(self):
 
@@ -129,7 +131,7 @@ class BERTBase(nn.Module):
 
                         return self.dropout(self.normlayer(self.linear(x)))
 
-                def __init__(self, seq_len=SEQ_LEN, model_dimension=EMBED_SIZE, number_heads=NUMBER_HEADS):
+                def __init__(self):
 
                     super().__init__()
                     self.bert_self_attention = BERTBase.BertEncoder.BertLayer.BertAttention.BertSelfAttention()
@@ -142,6 +144,13 @@ class BERTBase(nn.Module):
                     return x
 
             class BertIntermediate(nn.Module):
+                """
+                Intermediate layer for the FeedForward mechanism in the BERT model.
+
+                Attributes:
+                    linear (nn.Linear): Linear layer
+                    non_linear (nn.GELU): GELU activation function
+                """
 
                 def __init__(self, ):
                     super().__init__()
@@ -149,18 +158,19 @@ class BERTBase(nn.Module):
                     self.non_linear = nn.GELU()
 
                 def forward(self, x):
-                    """
-                    Forward pass trough BertSelfOutput
 
-                    Args:
-                        x (torch.Tensor): input tensor
-
-                    Returns:
-                        torch.Tensor: output of FeedForward layer
-                    """
                     return self.non_linear(self.linear(x))
 
             class BertOutput(nn.Module):
+                """
+                Output layer
+
+                Attributes:
+                    linear (nn.Linear): Linear layer
+                    normlayer (nn.LayerNorm): Layer normalization
+                    dropout (nn.Dropout): Dropout layer
+                """
+
                 def __init__(self):
                     super().__init__()
                     self.linear = nn.Linear(EMBED_SIZE*4, EMBED_SIZE)
@@ -168,15 +178,7 @@ class BERTBase(nn.Module):
                     self.dropout = nn.Dropout(DROPOUT)
 
                 def forward(self, x):
-                    """
-                    Forward pass trough BertSelfOutput
 
-                    Args:
-                        x (torch.Tensor): input tensor
-
-                    Returns:
-                        torch.Tensor: output of FeedForward layer
-                    """
                     return self.dropout(self.normlayer(self.linear(x)))
 
 
@@ -231,6 +233,17 @@ class BERTBase(nn.Module):
             return x
 
     class BertEmbedding(torch.nn.Module):
+
+        """
+        BERT embedding layer for token, position, and segment embeddings.
+
+        Attributes:
+            token (nn.Embedding): Token embedding layer.
+            position (PositionEmbedding): Positional embedding layer.
+            segment (nn.Embedding): Segment embedding layer.
+            normlayer (nn.LayerNorm): Layer normalization
+            dropout (torch.nn.Dropout): Dropout layer
+        """
 
         class PositionEmbedding(torch.nn.Module):
             """
@@ -312,13 +325,6 @@ class BERTBase(nn.Module):
             self.encoders.insert(i,encoder)"""
 
     def forward(self, words):
-        """
-        Parameters:
-            words (torch.Tensor): word tokens
-
-        Returns:
-            torch.Tensor: output tensor
-        """
 
         # mask to mark the padded (0) tokens
         mask = (words > 0).unsqueeze(1).repeat(1,words.size(1),1).unsqueeze(1)
@@ -335,7 +341,13 @@ class BERTBase(nn.Module):
 
     # finetuning
 
-class ToxicityPredictionHead(nn.Module):
+class BERTMultiLabelClassifcation(nn.Module):
+    """
+        Head for Multilabel Classification. Expects the usage of BCEWithLogits (no sigmoid layer).
+
+        Attributes:
+            linear (nn.Linear): Linear layer for classification using the CLS Embedding
+        """
 
     def __init__(self):
 
@@ -357,18 +369,24 @@ class ToxicityPredictionHead(nn.Module):
 # TASK SHEET: model class    
 class Model(nn.Module):
 
+    """
+    Model for Toxic Comment Classification using BERT.
+
+    Attributes:
+        base_model (BERTBase): Base BERT model for feature extraction.
+        toxic_comment (BERTMultiLabelClassification): Multilabel classification layer for toxicity prediction.
+    """
+
     def __init__(self):
 
         super().__init__()
         # base BERT model
         self.base_model = BERTBase()
         # toxic comment classfication layer
-        self.toxic_comment = ToxicityPredictionHead()
+        self.toxic_comment = BERTMultiLabelClassifcation()
     
     def forward(self, words):
 
         x = self.base_model(words)
-
-        print(x.shape)
 
         return self.toxic_comment(x)
