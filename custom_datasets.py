@@ -52,9 +52,9 @@ class ToxicComment(Dataset):
                 ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']] # TODO watch out for order in params
         all_zero = torch.sum(torch.cat(asdf)) == 0
         if all_zero:
-            labels = torch.cat([torch.ones(1)] + asdf,dim=-1)
-        else:
             labels = torch.cat([torch.zeros(1)] + asdf,dim=-1)
+        else:
+            labels = torch.cat([torch.ones(1)] + asdf,dim=-1)
         output["labels"] = labels.to(DEVICE)
         
         return output
