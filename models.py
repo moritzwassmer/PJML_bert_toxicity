@@ -55,16 +55,18 @@ class BERTBase(nn.Module):
                         mask of shape: (batch_size, 1, 1, max_words)
                         """
 
-                        d_k = EMBED_SIZE // NUMBER_HEADS
+
 
                         Q, K, V = self.query(Q), self.key(K), self.value(V)
 
-                        Q = Q.view(Q.shape[0], -1, NUMBER_HEADS, d_k).permute(0, 2, 1, 3)
-                        K = K.view(K.shape[0], -1, NUMBER_HEADS, d_k).permute(0, 2, 1, 3)
-                        V = V.view(V.shape[0], -1, NUMBER_HEADS, d_k).permute(0, 2, 1, 3)
+                        d_k = EMBED_SIZE // NUMBER_HEADS
+                        batch_size = Q.shape[0]
+                        Q = Q.view(batch_size, -1, NUMBER_HEADS, d_k).permute(0, 2, 1, 3)
+                        K = K.view(batch_size, -1, NUMBER_HEADS, d_k).permute(0, 2, 1, 3)
+                        V = V.view(batch_size, -1, NUMBER_HEADS, d_k).permute(0, 2, 1, 3)
 
                         # z = Q*K / sqrt(d_k)
-                        scores = torch.matmul(Q, K.permute(0, 1, 3, 2)) / math.sqrt(d_k) # Todo was Q.size(-1)
+                        scores = torch.matmul(Q, K.permute(0, 1, 3, 2)) / math.sqrt(d_k)
                         scores = scores.masked_fill(mask == 0, -np.inf)
 
                         # softmax(z)
@@ -73,7 +75,7 @@ class BERTBase(nn.Module):
 
                         # softmax(z) * V
                         output = torch.matmul(soft_scores, V)
-                        output = output.permute(0, 2, 1, 3).contiguous().view(output.shape[0], -1,
+                        output = output.permute(0, 2, 1, 3).contiguous().view(batch_size, -1,
                                                                                 NUMBER_HEADS * d_k)
 
                         return self.output_linear(output)
