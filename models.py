@@ -286,6 +286,7 @@ class BERTBase(nn.Module):
 
         def forward(self, x, mask):
             # run trough encoders
+            x=x
             for encoder in self.encoders:
                 x = encoder.forward(x, mask)
             return x
