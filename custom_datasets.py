@@ -5,6 +5,30 @@ from torch.utils.data import Dataset
 from params import *
 
 class ToxicComment(Dataset):
+    """
+        Dataset class for Toxic Comment Classification.
+
+        Args:
+            tokenizer (transformers.PreTrainedTokenizer): Tokenizer for processing text data.
+            seq_len (int, optional): Maximum sequence length. Default is SEQ_LEN.
+            split (str, optional): Dataset split, either 'train' or 'test'. Default is 'train'.
+            n_rows (int, optional): Number of rows to load from the dataset. Default is None.
+
+        Raises:
+            ValueError: If the 'split' parameter is not 'train' or 'test'.
+
+        Attributes:
+            n_rows (int): Number of rows to load from the dataset.
+            split (str): Dataset split, either 'train' or 'test'.
+            tokenizer (transformers.PreTrainedTokenizer): Tokenizer for processing text data.
+            seq_len (int): Maximum sequence length.
+            dataset Loaded dataset from the Jigsaw Toxicity Prediction dataset.
+
+        Methods:
+            __len__(): Returns the number of samples in the dataset.
+            __getitem__(item): Retrieves a sample from the dataset.
+
+        """
     
     def __init__(self, tokenizer, seq_len=SEQ_LEN, split="train", n_rows:int=None):
         
