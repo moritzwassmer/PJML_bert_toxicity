@@ -20,6 +20,7 @@ NUMBER_HEADS = 12
 EMBED_SIZE = 768 # size of embedding vector
 VOCAB_SIZE = 30522  # = len(tokenizer.vocab)
 SEQ_LEN = 64 # maximum sequence length
+DROPOUT = 0
 
 ORDER_LABELS = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']
 

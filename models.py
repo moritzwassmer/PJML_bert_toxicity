@@ -75,7 +75,7 @@ class BERTBase(nn.Module):
                         self.Q = nn.Linear(model_dimension, model_dimension)
                         self.K = nn.Linear(model_dimension, model_dimension)
                         self.V = nn.Linear(model_dimension, model_dimension)
-                        self.dropout = nn.Dropout(0.1)  # TODO hardcoded
+                        self.dropout = nn.Dropout(DROPOUT)  # TODO hardcoded
 
                     def forward(self, Q, K, V, mask):
                         """
@@ -168,7 +168,7 @@ class BERTBase(nn.Module):
                         self.linear = nn.Linear(model_dimension, model_dimension)
                         self.normlayer = nn.LayerNorm(model_dimension)
                         # non-linearity
-                        self.dropout = nn.Dropout(0.1)  # TODO hardcoded
+                        self.dropout = nn.Dropout(DROPOUT)  # TODO hardcoded
 
                     def forward(self, x):
                         """
@@ -222,7 +222,7 @@ class BERTBase(nn.Module):
                     self.linear = nn.Linear(hidden_dimension, model_dimension)
                     # non-linearity
                     self.normlayer = nn.LayerNorm(model_dimension)
-                    self.dropout = nn.Dropout(0.1) # TODO hardcoded
+                    self.dropout = nn.Dropout(DROPOUT) # TODO hardcoded
 
                 def forward(self, x):
                     """
@@ -240,14 +240,8 @@ class BERTBase(nn.Module):
             def __init__(self, seq_len=SEQ_LEN, model_dimension=EMBED_SIZE, number_heads=NUMBER_HEADS,
                          ff_hidden_dim=EMBED_SIZE * 4):
                 super().__init__()
-                # attention heads
                 self.bert_attention = BERTBase.BertEncoder.BertLayer.BertAttention() # TODO params
-
-                # normalisation layer
-                # self.normlayer = nn.LayerNorm(model_dimension)
                 self.bert_intermediate = BERTBase.BertEncoder.BertLayer.BertIntermediate() # TODO params
-                # self.dropout = nn.Dropout(0.1)
-
                 self.bert_output = BERTBase.BertEncoder.BertLayer.BertOutput() # TODO Params
 
 
@@ -338,7 +332,7 @@ class BERTBase(nn.Module):
             def forward(self,x):
                 return self.pos_embedding
 
-        def __init__(self, vocab_size=VOCAB_SIZE, seq_len=SEQ_LEN, embed_size=EMBED_SIZE, device=DEVICE, dropout=0.1):
+        def __init__(self, vocab_size=VOCAB_SIZE, seq_len=SEQ_LEN, embed_size=EMBED_SIZE, device=DEVICE, dropout=DROPOUT):
             super().__init__()
             # token embedding: transforms (vocabulary size, number of tokens) into (vocabulary size, number of tokens, length of embdding vector)
             self.token = nn.Embedding(vocab_size, embed_size, padding_idx=0).to( # are we sure padding is 0? -> yes
