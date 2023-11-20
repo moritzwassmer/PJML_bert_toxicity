@@ -7,11 +7,13 @@ TOXIC = r"C:\Users\morit\OneDrive\UNI\Master\WS23\PML\repo\bert_from_scratch.tox
 
 ### RUN SPECIFIC
 
-TRAIN_LENGTH = 10000# 159571 # length of training set
-TEST_LENGTH = 1024
+TRAIN_LENGTH = 64# 159571 # length of training set
+TEST_LENGTH = 64
 DEVICE= 'cuda' if torch.cuda.is_available() else 'cpu'
 BATCH_SIZE = 64 # 512
-EPOCHS = 3 # 10
+EPOCHS = 100 # 10
+
+
 
 ### MODEL OR TOKENIZER SPECIFIC
 N_SEGMENTS = 2 # number of segmentation labels
@@ -20,7 +22,7 @@ NUMBER_HEADS = 12
 EMBED_SIZE = 768 # size of embedding vector
 VOCAB_SIZE = 30522  # = len(tokenizer.vocab)
 SEQ_LEN = 64 # maximum sequence length
-DROPOUT = 0
+DROPOUT = 0.1
 EPS = 1e-12
 
 ORDER_LABELS = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']

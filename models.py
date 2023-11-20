@@ -32,6 +32,16 @@ class BERTBase(nn.Module):
 
     class BertEncoder(nn.Module):
 
+        """
+            Encoder Wrapper of BERT (Bidirectional Encoder Representations from Transformers) model.
+
+            Attributes:
+                input_size (int): Dimensionality of the input embeddings.
+                hidden_size (int): Dimensionality of the hidden representations.
+                num_layers (int): Number of encoder layers.
+                dropout (float): Dropout probability for regularization.
+        """
+
         class BertLayer(nn.Module):
             # TODO Doc
 
@@ -354,14 +364,6 @@ class BERTBase(nn.Module):
                  number_layers=NUMBER_LAYERS, number_heads=NUMBER_HEADS, seq_len=SEQ_LEN):
 
         super().__init__()
-        """self.model_dimension=model_dimension
-        self.number_layers=number_layers
-        self.number_heads=number_heads
-        # hidden layer dimenion of FF is 4*model_dimension 
-        self.ff_hidden_layer = 4*model_dimension
-        # embedding of input
-
-        self.seq_len = seq_len"""
 
         self.embedding = BERTBase.BertEmbedding(vocab_size=vocab_size, seq_len=seq_len, embed_size=model_dimension)
         self.encoder = BERTBase.BertEncoder(model_dimension=model_dimension,number_layers=number_layers,number_heads=number_heads)
@@ -390,11 +392,8 @@ class BERTBase(nn.Module):
 
     def forward(self, words):
         """
-        Forward pass of the BERTBase model
-
         Parameters:
             words (torch.Tensor): word tokens
-            segments (torch.Tensor): segment tokens
 
         Returns:
             torch.Tensor: output tensor
