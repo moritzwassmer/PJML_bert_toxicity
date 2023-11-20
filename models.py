@@ -50,20 +50,18 @@ class BERTBase(nn.Module):
                         self.output_linear = nn.Linear(EMBED_SIZE, EMBED_SIZE)
 
                     def forward(self, Q, K, V, mask):
-                        """
-                        query, key, value of shape: (batch_size, max_len, d_model)
-                        mask of shape: (batch_size, 1, 1, max_words)
-                        """
-
-
 
                         Q, K, V = self.query(Q), self.key(K), self.value(V)
 
                         d_k = EMBED_SIZE // NUMBER_HEADS
                         batch_size = Q.shape[0]
-                        Q = Q.view(batch_size, -1, NUMBER_HEADS, d_k).permute(0, 2, 1, 3)
-                        K = K.view(batch_size, -1, NUMBER_HEADS, d_k).permute(0, 2, 1, 3)
-                        V = V.view(batch_size, -1, NUMBER_HEADS, d_k).permute(0, 2, 1, 3)
+
+                        def prep_attention(t):
+                            # TODO Doc
+                            t.view(batch_size, -1, NUMBER_HEADS, d_k).permute(0, 2, 1, 3)
+                            return t
+
+                        Q, K, V  = prep_attention(Q), prep_attention(K), prep_attention(V)
 
                         # z = Q*K / sqrt(d_k)
                         scores = torch.matmul(Q, K.permute(0, 1, 3, 2)) / math.sqrt(d_k)
@@ -79,7 +77,6 @@ class BERTBase(nn.Module):
                                                                                 NUMBER_HEADS * d_k)
 
                         return self.output_linear(output)
-                # TODO take out
 
                 class BertSelfOutput(nn.Module):
                     """
