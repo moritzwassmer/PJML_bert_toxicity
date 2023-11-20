@@ -113,8 +113,6 @@ class BERTBase(nn.Module):
 
                 class MultiHeadedAttention(torch.nn.Module):
 
-                    # inspired by https://medium.com/data-and-beyond/complete-guide-to-building-bert-model-from-sratch-3e6562228891
-
                     def __init__(self):
                         super().__init__()
 
@@ -136,28 +134,26 @@ class BERTBase(nn.Module):
 
                         d_k = EMBED_SIZE // NUMBER_HEADS
 
-                        Q = self.query(Q)
-                        K = self.key(K)
-                        V = self.value(V)
+                        Q, K, V = self.query(Q), self.key(K), self.value(V)
 
                         Q = Q.view(Q.shape[0], -1, NUMBER_HEADS, d_k).permute(0, 2, 1, 3)
                         K = K.view(K.shape[0], -1, NUMBER_HEADS, d_k).permute(0, 2, 1, 3)
                         V = V.view(V.shape[0], -1, NUMBER_HEADS, d_k).permute(0, 2, 1, 3)
 
-                        scores = torch.matmul(Q, K.permute(0, 1, 3, 2)) / math.sqrt(Q.size(-1))
-
+                        # z = Q*K / sqrt(d_k)
+                        scores = torch.matmul(Q, K.permute(0, 1, 3, 2)) / math.sqrt(d_k) # Todo was Q.size(-1)
                         scores = scores.masked_fill(mask == 0, -np.inf)
 
+                        # softmax(z)
+                        soft_scores = nn.functional.softmax(scores, dim=-1)
+                        soft_scores = self.dropout(soft_scores)
 
-                        weights = nn.functional.softmax(scores, dim=-1)
-                        weights = self.dropout(weights)
-
-
-                        context = torch.matmul(weights, V)
-                        context = context.permute(0, 2, 1, 3).contiguous().view(context.shape[0], -1,
+                        # softmax(z) * V
+                        output = torch.matmul(soft_scores, V)
+                        output = output.permute(0, 2, 1, 3).contiguous().view(output.shape[0], -1,
                                                                                 NUMBER_HEADS * d_k)
 
-                        return self.output_linear(context)
+                        return self.output_linear(output)
                 # TODO take out
 
                 class BertSelfOutput(nn.Module):
