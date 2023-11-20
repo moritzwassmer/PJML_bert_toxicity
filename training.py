@@ -54,7 +54,6 @@ class TrainBERT:
         TN = 0
         TP = 0
         P = 0
-        P_not_clean = 0
 
         for i, data in enumerate(self.training_data):
             
@@ -90,14 +89,13 @@ class TrainBERT:
             TN += ((preds_th == 0) & (labels == 0)).sum().item()
             TP += ((preds_th == 1) & (labels == 1)).sum().item()
             P += (labels == 1).sum().item()
-            P_not_clean += (labels[:,1:labels.shape[1]] == 1).sum().item()
             # sump up total number of labels in batch
             total += labels.nelement()
         
         # update learning rate scheduler
         self.scheduler.step() 
         # print stats
-        message ="\nTraining epoch: {}\nAvg. training loss: {:.2f}\nAccuracy: {:.2f}\nCorrect predictions: {} of which the model predicted 'False': {}, true positives={}, positives={}, positives_not_nothing={}".format(epoch+1, avg_loss / len(self.training_data), T / total, T, TN, TP, P, P_not_clean)
+        message ="\nTraining epoch: {}\nAvg. training loss: {:.2f}\nAccuracy: {:.2f}\nCorrect predictions: {} of which the model predicted 'False': {}, true positives={}, positives={}".format(epoch+1, avg_loss / len(self.training_data), T / total, T, TN, TP, P)
         print(message)
 
         # write in results
@@ -108,11 +106,11 @@ class TrainBERT:
         self.bar.last_print_n = 0
         self.bar.refresh()
 
-    def testing(self, epoch): # TODO Chatgpt
-        # Set the model to evaluation mode
+    def testing(self, epoch):
+        # model to evaluation mode
         self.model.eval()
 
-        # Initialize stats for testing
+
         avg_loss = 0.0
         corrects_sum = 0
         total = 0
@@ -135,17 +133,20 @@ class TrainBERT:
 
                 avg_loss += loss.item()
 
-                # compute accuracy
+                # compute measures
                 # use threshold to determine which of the outputs are considered True
-                sigmoid = torch.nn.Sigmoid()
+                sigmoid = torch.nn.Sigmoid() # TODO required due to BCEwithLogits
                 preds =  sigmoid(preds)
                 predictions = torch.ge(preds, self.threshold).int()
+
                 # compare with the label and count correct classifications
                 corrects_sum += (predictions == labels).sum().item()
+
                 # check whether model is only predicting 0
                 TF += ((predictions == 0) & (labels == 0)).sum().item()
                 TP += ((predictions == 1) & (labels == 1)).sum().item()
                 P += (labels == 1).sum().item()
+
                 # sum up total number of labels in batch
                 total += labels.nelement()
 
