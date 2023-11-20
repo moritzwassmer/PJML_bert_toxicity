@@ -166,7 +166,7 @@ class BERTBase(nn.Module):
 
                         # linear layer
                         self.linear = nn.Linear(model_dimension, model_dimension)
-                        self.normlayer = nn.LayerNorm(model_dimension)
+                        self.normlayer = nn.LayerNorm(model_dimension, eps=EPS)
                         # non-linearity
                         self.dropout = nn.Dropout(DROPOUT)  # TODO hardcoded
 
@@ -221,7 +221,7 @@ class BERTBase(nn.Module):
                     super().__init__()
                     self.linear = nn.Linear(hidden_dimension, model_dimension)
                     # non-linearity
-                    self.normlayer = nn.LayerNorm(model_dimension)
+                    self.normlayer = nn.LayerNorm(model_dimension, eps=EPS)
                     self.dropout = nn.Dropout(DROPOUT) # TODO hardcoded
 
                 def forward(self, x):
@@ -340,7 +340,7 @@ class BERTBase(nn.Module):
             # embedding of position
             self.position = BERTBase.BertEmbedding.PositionEmbedding(embed_size, seq_len)
             self.segment = nn.Embedding(2, embed_size, padding_idx=0)
-            self.normlayer = nn.LayerNorm(embed_size)
+            self.normlayer = nn.LayerNorm(embed_size, eps=EPS)
             self.dropout = torch.nn.Dropout(p=dropout)
 
 

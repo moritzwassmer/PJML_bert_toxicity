@@ -21,6 +21,7 @@ EMBED_SIZE = 768 # size of embedding vector
 VOCAB_SIZE = 30522  # = len(tokenizer.vocab)
 SEQ_LEN = 64 # maximum sequence length
 DROPOUT = 0
+EPS = 1e-12
 
 ORDER_LABELS = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']
 
