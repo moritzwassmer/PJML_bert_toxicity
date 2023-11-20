@@ -37,7 +37,7 @@ class ToxicComment(Dataset):
             padding="max_length", 
             truncation=True, 
             return_tensors='pt'
-        )["input_ids"]#.to(DEVICE) # TODO
+        )["input_ids"].to(DEVICE)
         
         # flatten output
         output["input"] = output["input"].squeeze().to(torch.long)
@@ -49,7 +49,7 @@ class ToxicComment(Dataset):
         
         # Step 4: collect different labels to one tensor
         labels = [output[key] if isinstance(output[key], torch.Tensor) else torch.tensor([output[key]]) for key in
-                ORDER]
+                  ORDER_LABELS]
 
         labels = torch.cat(labels, dim=-1)
         output["labels"] = labels.to(DEVICE)

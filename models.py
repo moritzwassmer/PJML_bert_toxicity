@@ -6,7 +6,7 @@ from params import *
 
 import numpy as np
 
-from transformers import BertModel, BertConfig # ONLY USED TO GET PRETRAINED WEIGHTS!
+from transformers import BertModel, BertConfig # ONLY USED TO GET PRETRAINED CLASS_WEIGHTS!
 
 
 

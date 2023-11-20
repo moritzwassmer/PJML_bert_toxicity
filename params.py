@@ -11,7 +11,7 @@ TRAIN_LENGTH = 64# 159571 # length of training set
 TEST_LENGTH = 64
 DEVICE= 'cuda' if torch.cuda.is_available() else 'cpu'
 BATCH_SIZE = 64 # 512
-EPOCHS = 10 # 10
+EPOCHS = 50 # 10
 
 ### MODEL OR TOKENIZER SPECIFIC
 NUMBER_LAYERS = 12
@@ -20,9 +20,9 @@ EMBED_SIZE = 768 # size of embedding vector
 VOCAB_SIZE = 30522  # = len(tokenizer.vocab)
 SEQ_LEN = 64 # maximum sequence length
 
-ORDER = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']
+ORDER_LABELS = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']
 
-WEIGHTS = {
+CLASS_WEIGHTS = {
  'toxic': 10.433568719759382,
  'severe_toxic': 100.04451410658307,
  'obscene': 18.886377086045687,
@@ -31,4 +31,4 @@ WEIGHTS = {
  'identity_hate': 113.57366548042704}
 
 
-WEIGHTS_LIST = [WEIGHTS[key] for key in ORDER]
+WEIGHTS_LIST = [CLASS_WEIGHTS[key] for key in ORDER_LABELS]
