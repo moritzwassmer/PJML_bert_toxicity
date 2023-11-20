@@ -92,6 +92,8 @@ class BERTBase(nn.Module):
                         score_n = score / math.sqrt(att_head_dim)  # normalize: <q,k>/sqrt(d_k)
 
                         # mask 0 with -infinity so it becomes 0 after softmax, output dim: (batch_size x number_heads x seq_len x seq_len)
+                        print(mask.shape)
+                        print(score_n.shape)
                         score_m = score_n.masked_fill(mask == 0,
                                                       -np.inf)  # -> DELETE COMMENT: this is not for the pretraining masks but the padded tokens, they are 0 (see line 253)
 
@@ -108,6 +110,61 @@ class BERTBase(nn.Module):
                         # linear embedding for output, output dim: (batch_size x seq_len x model_dimension)
                         out = self.dropout(weighted_sum)
                         return out
+
+                class MultiHeadedAttention(torch.nn.Module):
+
+                    def __init__(self, heads=NUMBER_HEADS, d_model=EMBED_SIZE, dropout=DROPOUT):
+                        super().__init__()
+
+                        assert d_model % heads == 0
+                        self.d_k = d_model // heads
+                        self.heads = heads
+                        self.dropout = torch.nn.Dropout(dropout)
+
+                        self.query = torch.nn.Linear(d_model, d_model)
+                        self.key = torch.nn.Linear(d_model, d_model)
+                        self.value = torch.nn.Linear(d_model, d_model)
+                        self.output_linear = torch.nn.Linear(d_model, d_model)
+
+                    def forward(self, query, key, value, mask):
+                        """
+                        query, key, value of shape: (batch_size, max_len, d_model)
+                        mask of shape: (batch_size, 1, 1, max_words)
+                        """
+                        # (batch_size, max_len, d_model)
+                        query = self.query(query)
+                        key = self.key(key)
+                        value = self.value(value)
+
+                        # (batch_size, max_len, d_model) --> (batch_size, max_len, h, d_k) --> (batch_size, h, max_len, d_k)
+                        query = query.view(query.shape[0], -1, self.heads, self.d_k).permute(0, 2, 1, 3)
+                        key = key.view(key.shape[0], -1, self.heads, self.d_k).permute(0, 2, 1, 3)
+                        value = value.view(value.shape[0], -1, self.heads, self.d_k).permute(0, 2, 1, 3)
+
+                        # (batch_size, h, max_len, d_k) matmul (batch_size, h, d_k, max_len) --> (batch_size, h, max_len, max_len)
+                        scores = torch.matmul(query, key.permute(0, 1, 3, 2)) / math.sqrt(query.size(-1))
+
+                        # fill 0 mask with super small number so it wont affect the softmax weight
+                        # (batch_size, h, max_len, max_len)
+                        scores = scores.masked_fill(mask == 0, -1e9)
+
+                        # (batch_size, h, max_len, max_len)
+                        # softmax to put attention weight for all non-pad tokens
+                        # max_len X max_len matrix of attention
+
+                        weights = torch.nn.functional.softmax(scores, dim=-1)#nn.Softmax(scores, dim=-1)
+                        weights = self.dropout(weights)
+
+                        # (batch_size, h, max_len, max_len) matmul (batch_size, h, max_len, d_k) --> (batch_size, h, max_len, d_k)
+                        context = torch.matmul(weights, value)
+
+                        # (batch_size, h, max_len, d_k) --> (batch_size, max_len, h, d_k) --> (batch_size, max_len, d_model)
+                        context = context.permute(0, 2, 1, 3).contiguous().view(context.shape[0], -1,
+                                                                                self.heads * self.d_k)
+
+                        # (batch_size, max_len, d_model)
+                        return self.output_linear(context)
+                # TODO take out
 
                 class BertSelfOutput(nn.Module):
                     """
@@ -134,8 +191,9 @@ class BERTBase(nn.Module):
                 def __init__(self):
 
                     super().__init__()
-                    self.bert_self_attention = BERTBase.BertEncoder.BertLayer.BertAttention.BertSelfAttention()
-                    self.bert_self_output = BERTBase.BertEncoder.BertLayer.BertAttention.BertSelfOutput()
+                    #self.bert_self_attention = BERTBase.BertEncoder.BertLayer.BertAttention.BertSelfAttention()
+                    self.bert_self_attention = BERTBase.BertEncoder.BertLayer.BertAttention.MultiHeadedAttention() # TODO
+                    self.bert_self_output = self.BertSelfOutput()
 
                 def forward(self, x, mask): # TODO unsure about this forward pass
 
@@ -328,6 +386,7 @@ class BERTBase(nn.Module):
 
         # mask to mark the padded (0) tokens
         mask = (words > 0).unsqueeze(1).repeat(1,words.size(1),1).unsqueeze(1)
+        #print(mask.shape)
         segments = (words > 0).to(torch.int).cuda() # create segment embeddings (1s if words exist else padding so 0) # TODO check if 1 is correct
 
         x = self.embedding(words, segments)
