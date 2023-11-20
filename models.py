@@ -34,84 +34,7 @@ class BERTBase(nn.Module):
                     bert_self_output (BertSelfOutput): Output layer for the self-attention mechanism.
                 """
 
-                class BertSelfAttention(nn.Module):
-                    """
-                    Module for multi-headed Attention.
-
-                    Attributes:
-                        number_heads (int): Total number of attention heads.
-                        att_head_dim (int): Input dimension of each attention head.
-                        Q (nn.Linear): Query layer for Attention.
-                        K (nn.Linear): Key layer for Attention.
-                        V (nn.Linear): Value layer for Attention.
-                        lin_output (nn.Linear): Linear layer for the output of Attention.
-                    """
-
-                    def __init__(self):
-
-                        super().__init__()
-
-                        # attention mechanism: Q, K, V are linear embeddings -> embedding matrix dim: (model_dimension x model_dimension)
-                        self.Q = nn.Linear(EMBED_SIZE, EMBED_SIZE)
-                        self.K = nn.Linear(EMBED_SIZE, EMBED_SIZE)
-                        self.V = nn.Linear(EMBED_SIZE, EMBED_SIZE)
-                        self.dropout = nn.Dropout(DROPOUT)  # TODO hardcoded
-
-                    def forward(self, Q, K, V, mask):
-
-                        batch_size = Q.shape[0]  # infer batch_size dynamically
-
-                        def fit_attention_head(t, number_heads, att_head_dim, batch_size):
-                            """
-                            Transform from (batch_size x seq_len x model_dimension)
-                            to
-                            (batch_size x number_heads x seq_len x att_head_dim)
-
-                            Args:
-                                t (torch.Tensor): input tensor
-                                number_heads (int): number of attention heads
-                                att_head_dim (int): dimension of each attention head
-
-                            Returns:
-                                torch.Tensor: reshaped tensor
-
-                            """
-
-                            t = t.view(batch_size, number_heads, SEQ_LEN, att_head_dim)
-                            t = t.transpose(2, 3)
-                            return t
-
-                        att_head_dim = int(EMBED_SIZE / NUMBER_HEADS)
-
-                        Q = fit_attention_head(self.Q(Q), NUMBER_HEADS, att_head_dim, batch_size)
-                        K = fit_attention_head(self.K(K), NUMBER_HEADS, att_head_dim, batch_size)
-                        V = fit_attention_head(self.V(V), NUMBER_HEADS, att_head_dim, batch_size)
-
-                        # calculate dot product between each Q and each K and normaliz the output, output dim: (batch_size x number_heads x seq_len x seq_len)
-                        score = torch.matmul(Q, K.transpose(2, 3))
-                        score_n = score / math.sqrt(att_head_dim)  # normalize: <q,k>/sqrt(d_k)
-
-                        # mask 0 with -infinity so it becomes 0 after softmax, output dim: (batch_size x number_heads x seq_len x seq_len)
-                        print(mask.shape)
-                        print(score_n.shape)
-                        score_m = score_n.masked_fill(mask == 0,
-                                                      -np.inf)  # -> DELETE COMMENT: this is not for the pretraining masks but the padded tokens, they are 0 (see line 253)
-
-                        # softmax scores along each Q, output dim: (batch_size x number_heads x seq_len x seq_len)
-                        score_w = nn.functional.softmax(score_m, dim=-1)
-
-                        # multiply with V matrix: output weighted sum for each Q, output dim: (batch_size x number_heads x seq_len x att_head_dim)
-                        weighted_sum = torch.matmul(score_w, V)
-
-                        # concatenate attention heads to 1 output, output dim: (batch_size x seq_len x model_dimension)
-                        weighted_sum = weighted_sum.transpose(2, 3).reshape(batch_size, -1,
-                                                                            NUMBER_HEADS * att_head_dim)
-
-                        # linear embedding for output, output dim: (batch_size x seq_len x model_dimension)
-                        out = self.dropout(weighted_sum)
-                        return out
-
-                class MultiHeadedAttention(torch.nn.Module):
+                class BertSelfAttention(torch.nn.Module):
 
                     def __init__(self):
                         super().__init__()
@@ -182,7 +105,7 @@ class BERTBase(nn.Module):
 
                     super().__init__()
                     #self.bert_self_attention = BERTBase.BertEncoder.BertLayer.BertAttention.BertSelfAttention()
-                    self.bert_self_attention = BERTBase.BertEncoder.BertLayer.BertAttention.MultiHeadedAttention() # TODO
+                    self.bert_self_attention = BERTBase.BertEncoder.BertLayer.BertAttention.BertSelfAttention() # TODO
                     self.bert_self_output = self.BertSelfOutput()
 
                 def forward(self, x, mask): # TODO unsure about this forward pass
