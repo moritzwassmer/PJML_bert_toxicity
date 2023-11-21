@@ -28,7 +28,7 @@ class TrainBERT:
         # loss treats every output as an own random variable
         self.criterion = nn.BCEWithLogitsLoss(
             reduction="mean",
-            pos_weight=torch.Tensor(class_weights).cuda()
+            pos_weight=torch.Tensor(class_weights).to(DEVICE)
         )
         
         # predictions threshold above which predictions are set True

@@ -157,12 +157,12 @@ class BERTBase(nn.Module):
                         return self.dropout(self.normlayer(self.linear(x)))
 
                 def __init__(self):
-                """
-                Initializes the BertAttention module which comprises a BertSelfAttention module and a BertSelfOutput, which is the first part of the encoder.
+                    """
+                    Initializes the BertAttention module which comprises a BertSelfAttention module and a BertSelfOutput, which is the first part of the encoder.
 
-                Args:
-                    None
-                """
+                    Args:
+                        None
+                    """
 
                     super().__init__()
                     self.bert_self_attention = BERTBase.BertEncoder.BertLayer.BertAttention.BertSelfAttention()
@@ -285,12 +285,12 @@ class BERTBase(nn.Module):
 
         # base class for BERT
         def __init__(self):
-        """
-        Initializes the BertEncoder module. 
+            """
+            Initializes the BertEncoder module. 
 
-        Args:
-            None
-        """
+            Args:
+                None
+            """
             super().__init__()
 
             # init encoder layers
@@ -300,16 +300,16 @@ class BERTBase(nn.Module):
                 self.encoders = self.encoders.append(encoder)
 
         def forward(self, x, mask):
-        """
-        Forward pass through BertEncoder (through a pipeline of encoders).
+            """
+            Forward pass through BertEncoder (through a pipeline of encoders).
 
-        Args:
-            x (torch.Tensor): Input tensor
-            mask (torch.Tensor): Maks for padded tokens
+            Args:
+                x (torch.Tensor): Input tensor
+                mask (torch.Tensor): Maks for padded tokens
 
-        Returns:
-            torch.Tensor: Output tensor after passing through the encoder pipeline (the BERT-base)
-        """
+            Returns:
+                torch.Tensor: Output tensor after passing through the encoder pipeline (the BERT-base)
+            """
             # run trough encoders
             x=x
             for encoder in self.encoders:
