@@ -68,6 +68,7 @@ class TrainBERT:
         # run training
         for epoch in range(EPOCHS):
             self.bar.set_description(f"Training epoch {epoch+1}")
+            self.bar.total = len(self.training_data.dataset)
 
             self.training(epoch)
 
@@ -79,6 +80,7 @@ class TrainBERT:
             # testing case
             if self.testing_data is not None:
                 self.bar.set_description(f"Testing epoch {epoch+1}")
+                self.bar.total = len(self.testing_data.dataset)
 
                 self.testing(epoch)
 
