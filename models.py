@@ -54,10 +54,10 @@ class BERTBase(nn.Module):
 
                     Attributes:
                         dropout (nn.Dropout): Dropout layer 
-                        query (nn.Linear): Learned linear embedding of the input into query
-                        key (nn.Linear): Learned linear embedding of the input into key
-                        value (nn.Linear): Learned linear embedding of the input into value
-                        out_linear (nn.Linear): Linear embedding of the final output
+                        query (nn.Linear): Linear transformation of the input into query
+                        key (nn.Linear): Linear transformation of the input into key
+                        value (nn.Linear): Linear transformation of the input into value
+                        out_linear (nn.Linear): Linear transformation of the final output
                     """
 
                     def __init__(self):

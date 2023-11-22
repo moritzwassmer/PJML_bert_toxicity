@@ -20,7 +20,7 @@ class TrainBERT:
             model (nn.Module): BERT-based toxic comment classification model
             training_data (torch.utils.data.Dataloader): Dataloader for training 
             testing_data (torch.utils.data.DataLoader): Dataloader for testing
-            train_bar (tqdm.tqdm): Progress bar for training
+            bar (tqdm.tqdm): Progress bar for training
             test_bar (tqdm.tqdm): Progress bar for testing
             optimizer (torch.optim.Adam): Adam optimizer
             scheduler (torch.optim.lr_scheduler.StepLR): Scheduler for learning rate
@@ -48,10 +48,8 @@ class TrainBERT:
         self.model = model
         self.training_data = train_dataloader
         self.testing_data = test_dataloader
-        self.train_bar = tqdm(
+        self.bar = tqdm(
             total=len(self.training_data.dataset), desc=f'Training', position=0)
-        self.test_bar = tqdm(
-            total=len(self.testing_data.dataset), desc=f'Testing', position=0)
 
         # model to device
         self.model.to(DEVICE)
@@ -69,23 +67,25 @@ class TrainBERT:
 
         # run training
         for epoch in range(EPOCHS):
+            self.bar.set_description(f"Training epoch {epoch+1}")
 
             self.training(epoch)
 
             # reset progress bar
-            self.train_bar.n = 0
-            self.train_bar.last_print_n = 0
-            self.train_bar.refresh()
+            self.bar.n = 0
+            self.bar.last_print_n = 0
+            self.bar.refresh()
 
             # testing case
             if self.testing_data is not None:
+                self.bar.set_description(f"Testing epoch {epoch+1}")
 
                 self.testing(epoch)
 
                 # reset progress bar
-                self.test_bar.n = 0
-                self.test_bar.last_print_n = 0
-                self.test_bar.refresh()
+                self.bar.n = 0
+                self.bar.last_print_n = 0
+                self.bar.refresh()
 
     def write_results(self, output, file):
         """
@@ -115,7 +115,7 @@ class TrainBERT:
 
         for i, data in enumerate(self.training_data):
             # update progress bar
-            self.train_bar.update(self.training_data.batch_size)
+            self.bar.update(self.training_data.batch_size)
 
             # send data to GPU/CPU
             data = {key: value.to(DEVICE) for key, value in data.items()}
@@ -183,7 +183,7 @@ class TrainBERT:
         with torch.no_grad():
             for i, data in enumerate(self.testing_data):
                 # update progress bar
-                self.test_bar.update(self.testing_data.batch_size)
+                self.bar.update(self.testing_data.batch_size)
 
                 # send data to GPU/CPU
                 data = {key: value.to(DEVICE)
