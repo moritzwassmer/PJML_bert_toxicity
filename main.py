@@ -1,20 +1,13 @@
 from torch.utils.data import DataLoader
-from transformers import BertTokenizer
-
-
 import custom_datasets
 import models
 from params import *
 import training
 
-# tokenizer
-tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")  # Choose an appropriate tokenizer
-
-
 # TASK SHEET: load_data
-def load_data(dataset:str, transformation=None, n_train:int=None, n_test:int=None, batch_size=BATCH_SIZE, shuffle=True): # transformation callable
+def load_data(dataset: str, transformation=None, n_train: int = None, n_test: int = None, batch_size=BATCH_SIZE, shuffle=True):  # transformation callable
     """
-    TASK SHEET: Function to load dataset in path indicated by name, specify number of training and testing samples, apply transformations and return dataloader
+    TASK SHEET: Function to load dataset in path indicated by name, specify number of training and testing samples, apply transformations and return dataloader.
 
     Args:
         dataset (str): name of dataset
@@ -25,7 +18,7 @@ def load_data(dataset:str, transformation=None, n_train:int=None, n_test:int=Non
 
     Returns:
         Tuple[torch.utils.data.DataLoader]: training and testing dataloader
-    """    
+    """
     if dataset == "jigsaw_toxicity_pred":
         train = custom_datasets.ToxicComment(
             tokenizer=transformation,
@@ -33,7 +26,7 @@ def load_data(dataset:str, transformation=None, n_train:int=None, n_test:int=Non
             split="train",
             n_rows=n_train
         )
-        
+
         test = custom_datasets.ToxicComment(
             tokenizer=transformation,
             seq_len=SEQ_LEN,
@@ -45,14 +38,16 @@ def load_data(dataset:str, transformation=None, n_train:int=None, n_test:int=Non
         train = DataLoader(train, batch_size, shuffle)
         test = DataLoader(test, batch_size, shuffle)
         return train, test
-    
+
     else:
         raise NotImplementedError("Dataset not implemented")
-    
+
 # TASK SHEET: show
-def show(x, outfile:str=None): # can have more args
+def show(x, outfile: str = None):  
     """
     TASK SHEET: Function to visualize stuff
+
+    TODO insert function and update docstring comment
 
     Args:
         dataset (str): name of dataset
@@ -63,8 +58,9 @@ def show(x, outfile:str=None): # can have more args
 
     Returns:
         Tuple[torch.utils.data.DataLoader]: training and testing dataloader
-    """   
+    """
     pass
+
 
 def main():
     """
@@ -78,20 +74,15 @@ def main():
     # Training (for cluster)
 
     # load the entire training data (length dataset_length) into train
-    train_loader, test_dataloader = load_data("jigsaw_toxicity_pred", transformation=tokenizer, n_train=TRAIN_LENGTH,
-                                              n_test=TEST_LENGTH, batch_size=BATCH_SIZE, shuffle=True)
-    # train, _ = load_data("jigsaw_toxicity_pred", transformation=tokenizer, n_train=128, n_test=None)
+    train_loader, test_loader = load_data("jigsaw_toxicity_pred", transformation=TOKENIZER,
+                                          n_train=TRAIN_LENGTH, n_test=TEST_LENGTH, batch_size=BATCH_SIZE, shuffle=True)
 
-    # set up BERT model with toxic multilabel classification head
+    # set up BERT model with toxic multi-label classification head
     berti = models.Model()
 
     # train model (device to be updated according to cluster GPU)
-    #__init__(self, model, train_dataloader, epochs, test_dataloader=None, learning_rate=0.001, threshold=0.01,device=DEVICE):
-    training.TrainBERT(berti, train_loader, EPOCHS, device=DEVICE, test_dataloader=test_dataloader)
+    training.TrainBERT(berti, train_loader, test_loader)
 
 
 if __name__ == "__main__":
     main()
-
-
-

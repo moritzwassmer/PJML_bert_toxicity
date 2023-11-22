@@ -6,8 +6,8 @@ from params import *
 
 import numpy as np
 
-from transformers import BertModel, BertConfig # ONLY USED TO GET PRETRAINED CLASS_WEIGHTS!
-
+# ONLY USED TO GET PRETRAINED CLASS_WEIGHTS!
+from transformers import BertModel, BertConfig
 
 
 class BERTBase(nn.Module):
@@ -23,7 +23,7 @@ class BERTBase(nn.Module):
 
     class BertEncoder(nn.Module):
         """
-        Module to comprise the enire base for BERT including a pipeline of encoders.
+        Module to comprise the entire base for BERT including a pipeline of encoders.
 
         Attributes:
             encoders (nn.ModuleList): List of BertLayer modules (encoders)
@@ -32,9 +32,6 @@ class BERTBase(nn.Module):
         class BertLayer(nn.Module):
             """
             Initializes BertLayer module which comprises an encoder: BertAttention module (the multi-headed Attention and Add & Norm), a BertIntermediate module (the FeedForward layer) and a BertOutput (Add & Norm).
-
-            Args: 
-                None
             """
             class BertAttention(nn.Module):
                 """
@@ -61,14 +58,15 @@ class BERTBase(nn.Module):
                         """
                         Initializes the BertSelfAttention module (multi-headed Attention).
                         The module performs multi-headed Self-Attention on the input sequence and outputs an Attention-weighted embedding. 
-                        
+
                         Raises:
                             ValueError: If EMBED_SIZE is not divisible by NUMBER_HEADS
                         """
                         super().__init__()
 
                         if EMBED_SIZE % NUMBER_HEADS != 0:
-                            raise ValueError(f"EMBED_SIZE:{EMBED_SIZE} % NUMBER_HEADS:{NUMBER_HEADS} != 0")
+                            raise ValueError(
+                                f"EMBED_SIZE:{EMBED_SIZE} % NUMBER_HEADS:{NUMBER_HEADS} != 0")
 
                         self.dropout = nn.Dropout(DROPOUT)
 
@@ -87,27 +85,30 @@ class BERTBase(nn.Module):
                             V (torch.Tensor): Value
                             mask (torch.Tensor): Mask the padded tokens
                         """
-                        d_k = EMBED_SIZE // NUMBER_HEADS # dimension of a single attention head
+                        d_k = EMBED_SIZE // NUMBER_HEADS  # dimension of a single attention head
                         batch_size = Q.shape[0]
 
                         def prep_attention(t):
                             """
                             Reshapes the input of the multi-headed Attention to match the dimensions of the attention heads.
-                            Input dimension: (batch_size, sequence_length, EMBED_SIZE) --> ouput dimension: (batch_size, NUMBER_HEADS, sequence_length, d_k)
+                            Input dimension: (batch_size, sequence_length, EMBED_SIZE) --> output dimension: (batch_size, NUMBER_HEADS, sequence_length, d_k)
                             Args:
                                 t (torch.Tensor): Input tensor
 
                             Returns:
                                 torch.Tensor:  Tensor with dimensions suitable for multi-headed Self-Attention
                             """
-                            t = t.view(batch_size, -1, NUMBER_HEADS, d_k).permute(0, 2, 1, 3)
+                            t = t.view(batch_size, -1, NUMBER_HEADS,
+                                       d_k).permute(0, 2, 1, 3)
                             return t
 
                         Q, K, V = self.query(Q), self.key(K), self.value(V)
-                        Q, K, V  = prep_attention(Q), prep_attention(K), prep_attention(V)
+                        Q, K, V = prep_attention(
+                            Q), prep_attention(K), prep_attention(V)
 
                         # z = Q*K / sqrt(d_k)
-                        scores = torch.matmul(Q, K.permute(0, 1, 3, 2)) / math.sqrt(d_k)
+                        scores = torch.matmul(Q, K.permute(
+                            0, 1, 3, 2)) / math.sqrt(d_k)
                         scores = scores.masked_fill(mask == 0, -np.inf)
 
                         # softmax(z)
@@ -117,7 +118,7 @@ class BERTBase(nn.Module):
                         # softmax(z) * V
                         output = torch.matmul(soft_scores, V)
                         output = output.permute(0, 2, 1, 3).contiguous().view(batch_size, -1,
-                                                                                NUMBER_HEADS * d_k)
+                                                                              NUMBER_HEADS * d_k)
 
                         return self.output_linear(output)
 
@@ -133,7 +134,7 @@ class BERTBase(nn.Module):
 
                     def __init__(self):
                         """
-                        Initializes the BerSelfOutput layer. This layer appies a linear embedding (linear), 
+                        Initializes the BerSelfOutput layer. This layer applies a linear embedding (linear), 
                         a normalization (normlayer) and a dropout (dropout) to the output of the multi-headed Self-Attention.
                         """
 
@@ -145,11 +146,11 @@ class BERTBase(nn.Module):
 
                     def forward(self, x):
                         """
-                        Performes a forward pass with ths output of the Attention-Head 
+                        Performs a forward pass with ths output of the Attention-Head 
 
                         Args:
                             x (torch.Tensor): Input tensor
-                        
+
                         Returns:
                             torch.Tensor: Output of the Add & Norm layer
                         """
@@ -159,9 +160,6 @@ class BERTBase(nn.Module):
                 def __init__(self):
                     """
                     Initializes the BertAttention module which comprises a BertSelfAttention module and a BertSelfOutput, which is the first part of the encoder.
-
-                    Args:
-                        None
                     """
 
                     super().__init__()
@@ -180,7 +178,7 @@ class BERTBase(nn.Module):
                         torch.Tensor: Output of BertAttention, including a residual connection from after the BertSelfAttention
                     """
 
-                    att_out = self.bert_self_attention(x,x,x, mask)
+                    att_out = self.bert_self_attention(x, x, x, mask)
                     # residual connection
                     residual = self.bert_self_output(x + att_out)
                     return residual
@@ -198,9 +196,6 @@ class BERTBase(nn.Module):
                 def __init__(self, ):
                     """
                     Initializes BertIntermediate layer. 
-
-                    Args:
-                        None
                     """
                     super().__init__()
                     self.linear = nn.Linear(EMBED_SIZE, EMBED_SIZE*4)
@@ -232,9 +227,6 @@ class BERTBase(nn.Module):
                     """
                     Initializes the BeryOutput layer.
                     This layer consists of a linear layer, a layer normalization and a dropout layer. 
-
-                    Args:
-                        None
                     """
                     super().__init__()
                     self.linear = nn.Linear(EMBED_SIZE*4, EMBED_SIZE)
@@ -253,8 +245,8 @@ class BERTBase(nn.Module):
                     """
                     x = self.linear(x)
                     x = self.dropout(x)
-                    x = self.normlayer(x + residual) # residual connection
-                    return x 
+                    x = self.normlayer(x + residual)  # residual connection
+                    return x
 
             def __init__(self):
                 super().__init__()
@@ -287,9 +279,6 @@ class BERTBase(nn.Module):
         def __init__(self):
             """
             Initializes the BertEncoder module. 
-
-            Args:
-                None
             """
             super().__init__()
 
@@ -305,13 +294,13 @@ class BERTBase(nn.Module):
 
             Args:
                 x (torch.Tensor): Input tensor
-                mask (torch.Tensor): Maks for padded tokens
+                mask (torch.Tensor): Mask for padded tokens
 
             Returns:
                 torch.Tensor: Output tensor after passing through the encoder pipeline (the BERT-base)
             """
             # run trough encoders
-            x=x
+            x = x
             for encoder in self.encoders:
                 x = encoder.forward(x, mask)
             return x
@@ -350,7 +339,8 @@ class BERTBase(nn.Module):
                 Returns:
                     torch.Tensor: Matrix for positional embedding
                 """
-                embed_matrix = torch.zeros(seq_len, embed_size, device=DEVICE).float()  # TODO DEVICE
+                embed_matrix = torch.zeros(
+                    seq_len, embed_size, device=DEVICE).float()  
 
                 # positional encoding not to be updated during gradient descent
                 embed_matrix.requires_grad = False
@@ -358,9 +348,9 @@ class BERTBase(nn.Module):
                 # compute embedding for each position in input
                 for position in range(seq_len):
                     embed_matrix[position, ::2] = torch.sin(
-                        position / (10000  ** (2 * torch.arange(0, embed_size, 2) / embed_size)))
+                        position / (10000 ** (2 * torch.arange(0, embed_size, 2) / embed_size)))
                     embed_matrix[position, 1::2] = torch.cos(
-                        position / (10000  ** (2 * torch.arange(0, embed_size, 2) / embed_size)))
+                        position / (10000 ** (2 * torch.arange(0, embed_size, 2) / embed_size)))
 
                 return embed_matrix
 
@@ -369,12 +359,13 @@ class BERTBase(nn.Module):
                 Initializes a positional embedding (PositionEmbedding module).
                 """
                 super().__init__()
-                self.pos_embedding = self.create_embedding_matrix(embed_size, seq_len)
+                self.pos_embedding = self.create_embedding_matrix(
+                    embed_size, seq_len)
 
-            def forward(self,x):
+            def forward(self, x):
                 """
                 Forward pass for positional embedding. 
-                
+
                 Args: 
                     x (torch.Tensor): Input tensor
 
@@ -390,33 +381,34 @@ class BERTBase(nn.Module):
             Attributes:
                 token (nn.Embedding): Token embedding
                 position (PositionEmbedding): Positional embedding
-                segment (nn.EMbeddding): Segment embedding
+                segment (nn.Embedding): Segment embedding
                 normlayer (nn.LayerNorm): Normalization layer
-                droput (torch.nn.Dropout): Droput layer
+                dropout (torch.nn.Dropout): Dropout layer
             """
             super().__init__()
-            # token embedding: transforms (vocabulary size, number of tokens) into (vocabulary size, number of tokens, length of embdding vector)
-            self.token = nn.Embedding(VOCAB_SIZE, EMBED_SIZE, padding_idx=0).to(DEVICE)  # padding remains 0 during training
+            # token embedding: transforms (vocabulary size, number of tokens) into (vocabulary size, number of tokens, length of embedding vector)
+            self.token = nn.Embedding(VOCAB_SIZE, EMBED_SIZE, padding_idx=0).to(
+                DEVICE)  # padding remains 0 during training
             # embedding of position
             self.position = BERTBase.BertEmbedding.PositionEmbedding()
             self.segment = nn.Embedding(2, EMBED_SIZE, padding_idx=0)
             self.normlayer = nn.LayerNorm(EMBED_SIZE, eps=EPS)
             self.dropout = torch.nn.Dropout(p=DROPOUT)
 
-
         def forward(self, sequence, segments):
             """
-            Forward pass through Embedding, applies Bertembedding to input to be processed by the model.
+            Forward pass through Embedding, applies BertEmbedding to input to be processed by the model.
 
             Args:
                 sequence (torch.Tensor): Input tensor
-                segements (torch.Tensor): Segmentation mask tensor
-            
+                segments (torch.Tensor): Segmentation mask tensor
+
             Returns:
                 torch.Tensor: Embedding 
             """
 
-            total_embedding = self.token(sequence) + self.position(sequence) + self.segment(segments)
+            total_embedding = self.token(
+                sequence) + self.position(sequence) + self.segment(segments)
             norm_embedding = self.normlayer(total_embedding)
             return self.dropout(norm_embedding)
 
@@ -433,17 +425,12 @@ class BERTBase(nn.Module):
         self.embedding = BERTBase.BertEmbedding()
         self.encoder = BERTBase.BertEncoder()
 
-        # TODO implement load model weights
         if use_pretrained:
             self.load_from_pretrained()
-        
 
     def load_from_pretrained(self):
         """
         Method to load pretrained weights from https://huggingface.co/bert-base-uncased into the BERTBase model.
-
-        Args:
-            None
 
         TODO: implement method
         """
@@ -455,43 +442,44 @@ class BERTBase(nn.Module):
 
         # stack encoders and apply the pretrained weights to the layers of the encoders
         self.encoders = torch.nn.ModuleList()  # create empty module list
-        for i in range(self.number_layers):
+        for i in range(NUMBER_LAYERS):
             pretrained_encoder = pretrained_model.encoder.layer[i].state_dict()
             encoder = self.encoders[i]
             encoder = encoder.load_state_dict(pretrained_encoder, strict=False)
             self.encoders.insert(i,encoder)
         
         # freeze the pre-trained parameters
-        for param in self.encoder.parameters():
+        for param in self.encoders.parameters():
             param.requires_grad = False
         """
-            
+        
+
     def forward(self, words):
         """
         Forward pass through the BERTBase model. Applies a mask to the padded characters so they remain 0 during training, applies a segment mask for non-padded characters.
 
         Args:
             words (torch.Tensor): Input line tensor
-        
+
         Returns:
             torch.Tensor: Output of the BERT base model
         """
 
         # mask to mark the padded (0) tokens
-        mask = (words > 0).unsqueeze(1).repeat(1,words.size(1),1).unsqueeze(1)
-        #print(mask.shape)
-        segments = (words > 0).to(torch.int).to(DEVICE) # create segment embeddings (1 if words exist else padding, so 0) # TODO check if 1 is correct
+        mask = (words > 0).unsqueeze(1).repeat(
+            1, words.size(1), 1).unsqueeze(1)
+        segments = (words > 0).to(torch.int).to(DEVICE)
 
         x = self.embedding(words, segments)
         # run trough encoders
         x = self.encoder(x, mask)
 
         return x
-    
+
 # finetuning
 class BERTMultiLabelClassification(nn.Module):
     """
-        Head for Multilabel Classification. Expects the usage of BCEWithLogits (no sigmoid layer).
+        Head for multi-label classification. Expects the usage of BCEWithLogits (no sigmoid layer).
 
         Attributes:
             linear (nn.Linear): Linear layer for classification using the CLS Embedding
@@ -507,17 +495,17 @@ class BERTMultiLabelClassification(nn.Module):
 
         super().__init__()
         bert_out = EMBED_SIZE
-        self.linear = nn.Linear(bert_out, len(ORDER_LABELS)) # TODO hardcoded
-        
+        self.linear = nn.Linear(bert_out, len(ORDER_LABELS))  
+
     def forward(self, x):
 
-        # recieve output dimension (batch_size, self.tox_classes)
-        x = self.linear(x[:, 0]) # only extract CLS embedding (at beginning)
+        # receive output dimension (batch_size, self.tox_classes)
+        x = self.linear(x[:, 0])  # only extract CLS embedding (at beginning)
 
         return x
 
 
-# TASK SHEET: model class    
+# TASK SHEET: model class
 class Model(nn.Module):
 
     """
@@ -525,7 +513,7 @@ class Model(nn.Module):
 
     Attributes:
         base_model (BERTBase): Base BERT model for feature extraction.
-        toxic_comment (BERTMultiLabelClassification): Multilabel classification layer for toxicity prediction.
+        toxic_comment (BERTMultiLabelClassification): Multi-label classification layer for toxicity prediction.
     """
 
     def __init__(self):
@@ -539,16 +527,16 @@ class Model(nn.Module):
         super().__init__()
         # base BERT model
         self.base_model = BERTBase()
-        # toxic comment classfication layer
+        # toxic comment classification layer
         self.toxic_comment = BERTMultiLabelClassification()
-    
+
     def forward(self, words):
         """
         Performs the forward pass through the entire model.
 
         Args:
             words (torch.Tensor): raw input tensor (comments)
-        
+
         Returns:
             torch.Tensor: Output of the model
         """
