@@ -5,6 +5,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud, STOPWORDS
 
+from params import *
+
 
 def generate_wordcloud(text, Title, max_words=20):
     wordcloud = WordCloud(width=800, height=400, max_words=max_words, stopwords=set(STOPWORDS), background_color='white').generate(text)

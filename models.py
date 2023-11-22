@@ -19,6 +19,9 @@ class BERTBase(nn.Module):
 
     Args:
         use_pretrained (bool, optional): Whether to load pretrained weights from Hugging Face. Default is True.
+
+    Methods:
+        load_from_pretrained(): loads encoder weights from pretrained model 
     """
 
     class BertEncoder(nn.Module):
@@ -27,11 +30,14 @@ class BERTBase(nn.Module):
 
         Attributes:
             encoders (nn.ModuleList): List of BertLayer modules (encoders)
+        
+        Methods:
+            forward(x, mask): performs a forward pass through the encoder-pipeline
         """
 
         class BertLayer(nn.Module):
             """
-            Initializes BertLayer module which comprises an encoder: BertAttention module (the multi-headed Attention and Add & Norm), a BertIntermediate module (the FeedForward layer) and a BertOutput (Add & Norm).
+            BertLayer module which comprises an encoder: BertAttention module (the multi-headed Attention and Add & Norm), a BertIntermediate module (the FeedForward layer) and a BertOutput (Add & Norm).
             """
             class BertAttention(nn.Module):
                 """
@@ -186,7 +192,7 @@ class BERTBase(nn.Module):
             class BertIntermediate(nn.Module):
                 """
                 Intermediate layer for the FeedForward mechanism in the BERT model (after BertAttention).
-                This layer consits of a linear transformation and a GELU activation function. 
+                This layer consists of a linear transformation and a GELU activation function. 
 
                 Attributes:
                     linear (nn.Linear): Linear layer
@@ -225,7 +231,7 @@ class BERTBase(nn.Module):
 
                 def __init__(self):
                     """
-                    Initializes the BeryOutput layer.
+                    Initializes the BertOutput layer.
                     This layer consists of a linear layer, a layer normalization and a dropout layer. 
                     """
                     super().__init__()
@@ -249,6 +255,9 @@ class BERTBase(nn.Module):
                     return x
 
             def __init__(self):
+                """
+                Initializes BertLayer module which comprises an encoder.
+                """
                 super().__init__()
                 self.bert_attention = BERTBase.BertEncoder.BertLayer.BertAttention()
                 self.bert_intermediate = BERTBase.BertEncoder.BertLayer.BertIntermediate()
@@ -256,7 +265,7 @@ class BERTBase(nn.Module):
 
             def forward(self, x, mask):
                 """
-                Forward pass through BertLayer (encoder)
+                Forward pass through BertLayer (encoder).
 
                 Args:
                     x (torch.Tensor): input tensor
@@ -323,9 +332,13 @@ class BERTBase(nn.Module):
                 Generates positional embeddings for input sequences.
                 The positional embeddings are created only once during initialization and are not updated during gradient descent.
 
-                Parameters:
+                Args:
                     embed_size (int): Dimensionality of the embedding vector (default is EMBED_SIZE).
                     seq_len (int): Length of the input sequence (default is SEQ_LEN).
+                
+                Methods:
+                    create_embedding_matrix(embed_size, seq_len): creates a positional embedding tensor
+
             """
 
             def create_embedding_matrix(self, embed_size, seq_len):
@@ -340,7 +353,7 @@ class BERTBase(nn.Module):
                     torch.Tensor: Matrix for positional embedding
                 """
                 embed_matrix = torch.zeros(
-                    seq_len, embed_size, device=DEVICE).float()  
+                    seq_len, embed_size, device=DEVICE).float()
 
                 # positional encoding not to be updated during gradient descent
                 embed_matrix.requires_grad = False
@@ -370,7 +383,7 @@ class BERTBase(nn.Module):
                     x (torch.Tensor): Input tensor
 
                 Returns:
-                    torch.Tensor: Positional embeding of the input
+                    torch.Tensor: Positional embedding of the input
                 """
                 return self.pos_embedding
 
@@ -436,7 +449,7 @@ class BERTBase(nn.Module):
         """
         pass
         """
-        # Download pretrained weights from huggingface (for the base BERT)
+        # download pretrained weights 
         bert_base = "bert-base-uncased"
         pretrained_model = BertModel.from_pretrained(bert_base)
 
@@ -447,12 +460,7 @@ class BERTBase(nn.Module):
             encoder = self.encoders[i]
             encoder = encoder.load_state_dict(pretrained_encoder, strict=False)
             self.encoders.insert(i,encoder)
-        
-        # freeze the pre-trained parameters
-        for param in self.encoders.parameters():
-            param.requires_grad = False
         """
-        
 
     def forward(self, words):
         """
@@ -495,15 +503,23 @@ class BERTMultiLabelClassification(nn.Module):
 
         super().__init__()
         bert_out = EMBED_SIZE
-        self.linear = nn.Linear(bert_out, len(ORDER_LABELS))  
+        self.linear = nn.Linear(bert_out, len(ORDER_LABELS))
 
     def forward(self, x):
+        """
+        Forward pass of teh BERTMultiLabelClassification module
+
+        Args:   
+            x (torch.Tensor): Input tensor (output of the BERT-base model)
+
+        Returns:
+            torch.Tensor: Output after toxic comment label classification
+        """
 
         # receive output dimension (batch_size, self.tox_classes)
         x = self.linear(x[:, 0])  # only extract CLS embedding (at beginning)
 
         return x
-
 
 # TASK SHEET: model class
 class Model(nn.Module):
