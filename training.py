@@ -220,7 +220,7 @@ class TrainBERT:
 
         # print stats for testing
         message1 = "\nTesting epoch {}\nAvg. training loss: {:.2f}\nAccuracy: {:.2f}\nCorrect predictions: {} of which true negatives: {}".format(
-            epoch+1, avg_loss / len(self.training_data), T / total, T, TN)
+            epoch+1, avg_loss / len(self.testing_data), T / total, T, TN)
         message2 = "\nTrue positives: {} of positives: {}\n".format(TP, P)
         message = message1+message2
         print(message)
