@@ -6,6 +6,9 @@ Parameters for configuration:
     - Dataset path:
         TOXIC (str): Path of dataset
 
+    - Output folder:
+        OUTPUT (str): directory where output is saved
+
     - Run specific:
         TRAIN_LENGTH (int): Training set length 
         TEST_LENGTH (int): Test set length
@@ -33,13 +36,17 @@ Parameters for configuration:
 
 # DATASET PATH
 
-TOXIC = r"C:\Users\Johannes\Project Machine Learning\datasets\finetuning\toxic_comment"  # Johannes
-# TOXIC = r"/home/space/datasets/toxic_comment" # cluster path
-# TOXIC = r"C:\Users\morit\OneDrive\UNI\Master\WS23\PML\repo\bert_from_scratch.toxic_comment\datasets\finetuning\kaggle-toxic_comment" # Moritz
+# TOXIC = r"C:/Users/Johannes/Project Machine Learning/datasets/finetuning/toxic_comment/"  # Johannes
+TOXIC = r"/home/space/datasets/toxic_comment/" # cluster path
+# TOXIC = r"C:\Users\morit\OneDrive\UNI\Master\WS23\PML\repo\bert_from_scratch.toxic_comment\datasets\finetuning\kaggle-toxic_comment/" # Moritz
+
+# OUTPUT PATH
+
+OUTPUT = "output_folder" # output folder
 
 # RUN SPECIFIC
 
-TRAIN_LENGTH = 159571  # length of training set
+TRAIN_LENGTH =159571  # length of training set
 TEST_LENGTH = 63978  # length of test set
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 BATCH_SIZE = 512

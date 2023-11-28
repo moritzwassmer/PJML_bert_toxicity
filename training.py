@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -91,13 +92,15 @@ class TrainBERT:
 
     def write_results(self, output, file):
         """
-        Helper function that writes the output of the training/testing loop into a .txt file.
+        Helper function that writes the output of the training/testing loop into a .txt file in the output_folder.
 
         Args:
             output (str): Message
             file (str): File path
         """
-        with open(file, "a") as file:
+        os.makedirs(OUTPUT, exist_ok=True)
+        
+        with open(os.path.join(OUTPUT, f'{file}.txt'), "a") as file:
             file.write(output)
 
     def training(self, epoch):
