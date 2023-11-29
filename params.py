@@ -36,8 +36,8 @@ Parameters for configuration:
 
 # DATASET PATH
 
-# TOXIC = r"C:/Users/Johannes/Project Machine Learning/datasets/finetuning/toxic_comment/"  # Johannes
-TOXIC = r"/home/space/datasets/toxic_comment/" # cluster path
+TOXIC = r"C:/Users/Johannes/Project Machine Learning/datasets/finetuning/toxic_comment/"  # Johannes
+# TOXIC = r"/home/space/datasets/toxic_comment/" # cluster path
 # TOXIC = r"C:\Users\morit\OneDrive\UNI\Master\WS23\PML\repo\bert_from_scratch.toxic_comment\datasets\finetuning\kaggle-toxic_comment/" # Moritz
 
 # OUTPUT PATH
@@ -46,10 +46,10 @@ OUTPUT = "output_folder" # output folder
 
 # RUN SPECIFIC
 
-TRAIN_LENGTH =159571  # length of training set
-TEST_LENGTH = 63978  # length of test set
+TRAIN_LENGTH = 128 # 159571  # length of training set
+TEST_LENGTH = 128 # 63978  # length of test set
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-BATCH_SIZE = 512
+BATCH_SIZE = 32 # 512
 EPOCHS = 10
 LEARNING_RATE = 0.00001
 THRESHOLD = 0.5
@@ -74,6 +74,6 @@ NUMBER_LAYERS = 12  # 12
 NUMBER_HEADS = 12  # 12
 EMBED_SIZE = 768  # size of embedding vector
 VOCAB_SIZE = 30522  # len(tokenizer.vocab)
-SEQ_LEN = 64  # maximum sequence length
+SEQ_LEN = 512 # 64  # maximum sequence length
 DROPOUT = 0.1
 EPS = 1e-12

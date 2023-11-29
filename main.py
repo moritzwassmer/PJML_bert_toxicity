@@ -243,7 +243,7 @@ def main():
 
     # visualization of plots
     # show(TOXIC +'train.csv', graph_name="dstr_toxic")  # plots without saving
-    show((TOXIC +'train.csv'), output_folder=OUTPUT, graph_name="dstr_toxic")  # plots and saves in 'output_folder'
+    # show((TOXIC +'train.csv'), output_folder=OUTPUT, graph_name="dstr_toxic")  # plots and saves in 'output_folder'
     # Note, that plotting number of tokens per label/distribution takes time to process, since data from csv is tokenized first
 
     # set up BERT model with toxic multi-label classification head

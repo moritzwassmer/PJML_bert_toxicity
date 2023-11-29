@@ -30,7 +30,7 @@ class BERTBase(nn.Module):
 
         Attributes:
             encoders (nn.ModuleList): List of BertLayer modules (encoders)
-        
+
         Methods:
             forward(x, mask): performs a forward pass through the encoder-pipeline
         """
@@ -335,7 +335,7 @@ class BERTBase(nn.Module):
                 Args:
                     embed_size (int): Dimensionality of the embedding vector (default is EMBED_SIZE).
                     seq_len (int): Length of the input sequence (default is SEQ_LEN).
-                
+
                 Methods:
                     create_embedding_matrix(embed_size, seq_len): creates a positional embedding tensor
 
@@ -399,7 +399,7 @@ class BERTBase(nn.Module):
                 dropout (torch.nn.Dropout): Dropout layer
             """
             super().__init__()
-            # token embedding: transforms (vocabulary size, number of tokens) into (vocabulary size, number of tokens, length of embedding vector)
+            # token embedding: transforms (vocabulary size, number of tokens) into (vocabulary size, number of tokens, length of embedding vector) -> is the other tokenization obsolete (in custom_datasets.py)?
             self.token = nn.Embedding(VOCAB_SIZE, EMBED_SIZE, padding_idx=0).to(
                 DEVICE)  # padding remains 0 during training
             # embedding of position
@@ -443,24 +443,34 @@ class BERTBase(nn.Module):
 
     def load_from_pretrained(self):
         """
-        Method to load pretrained weights from https://huggingface.co/bert-base-uncased into the BERTBase model.
+        Method to load pretrained weights for the encoders, the token embedding and the segment embedding from https://huggingface.co/bert-base-uncased into the BERTBase model. 
+        To serve the purpose of Transfer learning, these weights remain frozen.
 
-        TODO: implement method
         """
-        pass
-        """
-        # download pretrained weights 
+
+        # download pretrained weights
         bert_base = "bert-base-uncased"
         pretrained_model = BertModel.from_pretrained(bert_base)
 
-        # stack encoders and apply the pretrained weights to the layers of the encoders
-        self.encoders = torch.nn.ModuleList()  # create empty module list
+        # load_state_dict for encoders
         for i in range(NUMBER_LAYERS):
             pretrained_encoder = pretrained_model.encoder.layer[i].state_dict()
-            encoder = self.encoders[i]
-            encoder = encoder.load_state_dict(pretrained_encoder, strict=False)
-            self.encoders.insert(i,encoder)
-        """
+            self.encoder.encoders[i].load_state_dict(
+                pretrained_encoder, strict=False)
+            # freeze
+            for weight in self.encoder.encoders[i].parameters():
+                weight.requires_grad = False
+
+        # load_state_dict tokenizer
+        self.embedding.token.load_state_dict(
+            pretrained_model.embeddings.word_embeddings.state_dict(), strict=False)
+        # load_state_dict for segment embedding
+        self.embedding.segment.load_state_dict(
+            pretrained_model.embeddings.token_type_embeddings.state_dict(), strict=False)
+
+        # Freeze weights for fine-tuning (Transfer learning)
+        self.embedding.token.weight.requires_grad = False
+        self.embedding.segment.weight.requires_grad = False
 
     def forward(self, words):
         """
@@ -485,6 +495,8 @@ class BERTBase(nn.Module):
         return x
 
 # finetuning
+
+
 class BERTMultiLabelClassification(nn.Module):
     """
         Head for multi-label classification. Expects the usage of BCEWithLogits (no sigmoid layer).
@@ -522,6 +534,8 @@ class BERTMultiLabelClassification(nn.Module):
         return x
 
 # TASK SHEET: model class
+
+
 class Model(nn.Module):
 
     """
