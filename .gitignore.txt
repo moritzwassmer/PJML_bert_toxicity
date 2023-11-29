@@ -50,5 +50,18 @@ prefix_*
 # Ignore README.md
 README.md
 
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore Python version file
+.python-version
+
 # Ignore virtual environment directory
 .venv/
+
+# Ignore Visual Studio Code settings
+.vscode/
+
+# Ignore Python bytecode cache
+__pycache__/
+
