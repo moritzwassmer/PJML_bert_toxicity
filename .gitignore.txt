@@ -43,3 +43,9 @@ prefix_*
 /subdirectory-to-ignore/
 
 **/*.ipynb_checkpoints/
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore README.md
+README.md
