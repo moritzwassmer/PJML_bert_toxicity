@@ -49,3 +49,6 @@ prefix_*
 
 # Ignore README.md
 README.md
+
+# Ignore virtual environment directory
+.venv/
