@@ -326,7 +326,7 @@ class BERTBase(nn.Module):
             normlayer (nn.LayerNorm): Layer normalization
             dropout (torch.nn.Dropout): Dropout layer
         """
-
+        # Since nn.Embedding is now used for position embedding, this is superfluous -> DELETE?
         class PositionEmbedding(torch.nn.Module):
             """
                 Generates positional embeddings for input sequences.
@@ -403,10 +403,17 @@ class BERTBase(nn.Module):
             self.token = nn.Embedding(VOCAB_SIZE, EMBED_SIZE, padding_idx=0).to(
                 DEVICE)  # padding remains 0 during training
             # embedding of position
-            self.position = BERTBase.BertEmbedding.PositionEmbedding()
+            # self.position = BERTBase.BertEmbedding.PositionEmbedding()
+
+            # use torch.nn.Embedding for position embedding, for weights to be transferable
+            self.position = nn.Embedding(SEQ_LEN, EMBED_SIZE, padding_idx=0).to(
+                DEVICE) 
             self.segment = nn.Embedding(2, EMBED_SIZE, padding_idx=0)
             self.normlayer = nn.LayerNorm(EMBED_SIZE, eps=EPS)
             self.dropout = torch.nn.Dropout(p=DROPOUT)
+
+            # create token position tensor
+            self.token_pos = torch.tensor([i for i in range(SEQ_LEN)])
 
         def forward(self, sequence, segments):
             """
@@ -419,9 +426,9 @@ class BERTBase(nn.Module):
             Returns:
                 torch.Tensor: Embedding 
             """
-
+            
             total_embedding = self.token(
-                sequence) + self.position(sequence) + self.segment(segments)
+                sequence) + self.position(self.token_pos) + self.segment(segments)
             norm_embedding = self.normlayer(total_embedding)
             return self.dropout(norm_embedding)
 
@@ -467,10 +474,14 @@ class BERTBase(nn.Module):
         # load_state_dict for segment embedding
         self.embedding.segment.load_state_dict(
             pretrained_model.embeddings.token_type_embeddings.state_dict(), strict=False)
+        # load_state_dict for position embedding
+        self.embedding.position.load_state_dict(
+            pretrained_model.embeddings.position_embeddings.state_dict(), strict=False)
 
         # Freeze weights for fine-tuning (Transfer learning)
         self.embedding.token.weight.requires_grad = False
         self.embedding.segment.weight.requires_grad = False
+        self.embedding.position.weight.requires_grad = False
 
     def forward(self, words):
         """
