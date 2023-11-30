@@ -374,7 +374,7 @@ class BERTBase(nn.Module):
                 super().__init__()
                 self.pos_embedding = self.create_embedding_matrix(
                     embed_size, seq_len)
-adsad
+
             def forward(self, x):
                 """
                 Forward pass for positional embedding. 
