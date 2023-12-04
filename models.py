@@ -413,7 +413,8 @@ class BERTBase(nn.Module):
             self.dropout = torch.nn.Dropout(p=DROPOUT)
 
             # create token position tensor
-            self.token_pos = torch.tensor([i for i in range(SEQ_LEN)])
+            self.token_pos = torch.tensor([i for i in range(SEQ_LEN)]).to(
+                DEVICE) 
 
         def forward(self, sequence, segments):
             """
