@@ -478,11 +478,15 @@ class BERTBase(nn.Module):
         # load_state_dict for position embedding
         self.embedding.position.load_state_dict(
             pretrained_model.embeddings.position_embeddings.state_dict(), strict=False)
+        # load_state_dict for LayerNorm
+        self.embedding.normlayer.load_state_dict(pretrained_model.embeddings.LayerNorm.state_dict())
 
         # Freeze weights for fine-tuning (Transfer learning)
         self.embedding.token.weight.requires_grad = False
         self.embedding.segment.weight.requires_grad = False
         self.embedding.position.weight.requires_grad = False
+        self.embedding.normlayer.weight.requires_grad = False
+        self.embedding.normlayer.bias.requires_grad = False
 
     def forward(self, words):
         """
