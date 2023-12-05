@@ -406,8 +406,7 @@ class BERTBase(nn.Module):
             # self.position = BERTBase.BertEmbedding.PositionEmbedding()
 
             # use torch.nn.Embedding for position embedding, for weights to be transferable
-            self.position = nn.Embedding(SEQ_LEN, EMBED_SIZE, padding_idx=0).to(
-                DEVICE) 
+            self.position = nn.Embedding(SEQ_LEN, EMBED_SIZE, padding_idx=0).to(DEVICE) 
             self.segment = nn.Embedding(2, EMBED_SIZE, padding_idx=0)
             self.normlayer = nn.LayerNorm(EMBED_SIZE, eps=EPS)
             self.dropout = torch.nn.Dropout(p=DROPOUT)
@@ -457,8 +456,8 @@ class BERTBase(nn.Module):
         """
 
         # download pretrained weights
-        bert_base = "bert-base-uncased"
-        pretrained_model = BertModel.from_pretrained(bert_base)
+        configuration = BertConfig.from_pretrained(BERT_BASE)
+        pretrained_model = BertModel.from_pretrained(BERT_BASE, config=configuration)
 
         # load_state_dict for encoders
         for i in range(NUMBER_LAYERS):
@@ -466,8 +465,8 @@ class BERTBase(nn.Module):
             self.encoder.encoders[i].load_state_dict(
                 pretrained_encoder, strict=False)
             # freeze
-            for weight in self.encoder.encoders[i].parameters():
-                weight.requires_grad = False
+            # for weight in self.encoder.encoders[i].parameters():
+            #    weight.requires_grad = False
 
         # load_state_dict tokenizer
         self.embedding.token.load_state_dict(
@@ -479,14 +478,14 @@ class BERTBase(nn.Module):
         self.embedding.position.load_state_dict(
             pretrained_model.embeddings.position_embeddings.state_dict(), strict=False)
         # load_state_dict for LayerNorm
-        self.embedding.normlayer.load_state_dict(pretrained_model.embeddings.LayerNorm.state_dict())
+        self.embedding.normlayer.load_state_dict(pretrained_model.embeddings.LayerNorm.state_dict(), strict=False)
 
-        # Freeze weights for fine-tuning (Transfer learning)
-        self.embedding.token.weight.requires_grad = False
-        self.embedding.segment.weight.requires_grad = False
-        self.embedding.position.weight.requires_grad = False
-        self.embedding.normlayer.weight.requires_grad = False
-        self.embedding.normlayer.bias.requires_grad = False
+        # Freeze weights for fine-tuning (maybe not good -> attention mechanism can't adapt)
+        #self.embedding.token.weight.requires_grad = False
+        #self.embedding.segment.weight.requires_grad = False
+        #self.embedding.position.weight.requires_grad = False
+        #self.embedding.normlayer.weight.requires_grad = False
+        #self.embedding.normlayer.bias.requires_grad = False
 
     def forward(self, words):
         """

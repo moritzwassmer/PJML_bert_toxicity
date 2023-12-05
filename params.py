@@ -46,10 +46,10 @@ OUTPUT = "output_folder" # output folder
 
 # RUN SPECIFIC
 
-TRAIN_LENGTH = 128 # 159571  # length of training set
-TEST_LENGTH = 128 # 63978  # length of test set
+TRAIN_LENGTH = 12800 # 159571  # length of training set
+TEST_LENGTH = 12800 # 63978  # length of test set
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-BATCH_SIZE = 32 # 512
+BATCH_SIZE = 64 # 512
 EPOCHS = 10
 LEARNING_RATE = 0.00001
 THRESHOLD = 0.5
@@ -69,6 +69,7 @@ WEIGHTS_LIST = [CLASS_WEIGHTS[key] for key in ORDER_LABELS]
 
 # MODEL OR TOKENIZER SPECIFIC
 TOKENIZER = BertTokenizer.from_pretrained("bert-base-uncased")
+BERT_BASE = "bert-base-uncased"
 N_SEGMENTS = 2  # number of segmentation labels
 NUMBER_LAYERS = 12  # 12
 NUMBER_HEADS = 12  # 12
