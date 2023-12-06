@@ -352,8 +352,7 @@ class BERTBase(nn.Module):
                 Returns:
                     torch.Tensor: Matrix for positional embedding
                 """
-                embed_matrix = torch.zeros(
-                    seq_len, embed_size, device=DEVICE).float()
+                embed_matrix = torch.zeros(seq_len, embed_size, device=DEVICE).float()
 
                 # positional encoding not to be updated during gradient descent
                 embed_matrix.requires_grad = False
@@ -365,6 +364,9 @@ class BERTBase(nn.Module):
                     embed_matrix[position, 1::2] = torch.cos(
                         position / (10000 ** (2 * torch.arange(0, embed_size, 2) / embed_size)))
 
+                # batch dimension first    
+                embed_matrix = embed_matrix.unsqueeze(0)
+
                 return embed_matrix
 
             def __init__(self, embed_size=EMBED_SIZE, seq_len=SEQ_LEN):
@@ -375,7 +377,7 @@ class BERTBase(nn.Module):
                 self.pos_embedding = self.create_embedding_matrix(
                     embed_size, seq_len)
 
-            def forward(self, x):
+            def forward(self,x):
                 """
                 Forward pass for positional embedding. 
 
@@ -412,8 +414,7 @@ class BERTBase(nn.Module):
             self.dropout = torch.nn.Dropout(p=DROPOUT)
 
             # create token position tensor
-            self.token_pos = torch.tensor([i for i in range(SEQ_LEN)]).to(
-                DEVICE) 
+            self.token_pos = torch.tensor([i for i in range(SEQ_LEN)]).to(DEVICE) 
 
         def forward(self, sequence, segments):
             """
@@ -472,8 +473,7 @@ class BERTBase(nn.Module):
         self.embedding.segment.load_state_dict(
             pretrained_model.embeddings.token_type_embeddings.state_dict(), strict=False)
         # load_state_dict for position embedding
-        self.embedding.position.load_state_dict(
-            pretrained_model.embeddings.position_embeddings.state_dict(), strict=False)
+        #self.embedding.position.load_state_dict(pretrained_model.embeddings.position_embeddings.state_dict(), strict=False)
         # load_state_dict for LayerNorm
         self.embedding.normlayer.load_state_dict(pretrained_model.embeddings.LayerNorm.state_dict(), strict=False)
 

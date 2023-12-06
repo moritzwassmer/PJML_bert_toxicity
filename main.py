@@ -53,6 +53,9 @@ def load_data(dataset: str, transformation=None, n_train: int = None, n_test: in
         raise NotImplementedError("Dataset not implemented")
 
 
+def train_apply(method="method_name", dataset="dataset_name"):
+    pass
+
 def generate_wordcloud(text, Title, max_words=20):
     wordcloud = WordCloud(width=800, height=400, max_words=max_words, stopwords=set(
         STOPWORDS), background_color='white').generate(text)
