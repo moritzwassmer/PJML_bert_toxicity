@@ -83,6 +83,6 @@ def train_apply(method="method_name", dataset="jigsaw_toxicity_pred"):
                     # assign epochs and learning rate
                     training.TrainBERT(berti, train_loader, test_loader, epochs=epochs, learning_rate=learning_rate)
 
-                    # TODO returns predicted labels for the test data
                     # TODO save test metrics to compare
-                    # TODO select best model and validate
+    # TODO select best model and validate
+    # TODO returns predicted labels for the test data
