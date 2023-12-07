@@ -1,5 +1,6 @@
 import torch
 from transformers import BertTokenizer
+
 """
 Parameters for configuration:
 
@@ -48,11 +49,18 @@ OUTPUT = "output_folder" # output folder
 
 TRAIN_LENGTH = 12800 # 159571  # length of training set
 TEST_LENGTH = 12800 # 63978  # length of test set
+VAL_LENGTH = TEST_LENGTH//2 # length of validation set
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-BATCH_SIZE = 64 # 512
+BATCH_SIZE = 64 
 EPOCHS = 10
 LEARNING_RATE = 0.00001
 THRESHOLD = 0.5
+# see paper p. 13 f.
+HYPER_PARAMS = {
+    'batch_size': [16,32,64],
+    'learning_rate': [5e-5, 3e-5, 2e-5],
+    'epochs': [2,3,4]
+}
 
 ORDER_LABELS = ['toxic', 'severe_toxic',
                 'obscene', 'threat', 'insult', 'identity_hate']

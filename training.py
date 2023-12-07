@@ -35,7 +35,7 @@ class TrainBERT:
  
     """
 
-    def __init__(self, model, train_dataloader, test_dataloader=None):
+    def __init__(self, model, train_dataloader=None, test_dataloader=None, epochs=EPOCHS, learning_rate=LEARNING_RATE):
         """
         Initializes a training and a testing processes.
 
@@ -47,6 +47,7 @@ class TrainBERT:
 
         # parameters
         self.model = model
+        self.epochs = epochs
         self.training_data = train_dataloader
         self.testing_data = test_dataloader
         self.bar = tqdm(
@@ -56,7 +57,7 @@ class TrainBERT:
         self.model.to(DEVICE)
 
         # optimizer: Adam
-        self.optimizer = optim.Adam(self.model.parameters(), lr=LEARNING_RATE)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
         # learning rate scheduler
         self.scheduler = StepLR(self.optimizer, step_size=5, gamma=0.1)
 
@@ -67,7 +68,7 @@ class TrainBERT:
         )
 
         # run training
-        for epoch in range(EPOCHS):
+        for epoch in range(self.epochs):
             self.bar.set_description(f"Training epoch {epoch+1}")
             self.bar.total = len(self.training_data.dataset)
 
