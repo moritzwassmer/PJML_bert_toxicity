@@ -77,22 +77,23 @@ def train_apply(method="train_test", dataset="jigsaw_toxicity_pred"):
             best_model = [None, 0, None]
 
             for learning_rate in HYPER_PARAMS['learning_rate']:
-                for epochs in HYPER_PARAMS['epochs']:
-                    # hyperparameter stats
-                    info = f"\nHyperparameters: batch size: {batch_size}, learning rate: {learning_rate}, epochs: {epochs}\n"
-                    print(info)
+                # hyperparameter stats
+                info = f"\nHyperparameters: batch size: {batch_size}, learning rate: {learning_rate}\n"
+                print(info)
 
-                    # set up new model
-                    berti = models.Model()
+                # set up new model
+                berti = models.Model()
                     
-                    # assign epochs and learning rate
-                    trainer = training.TrainBERT(berti, train_loader, test_loader, epochs=epochs, learning_rate=learning_rate, mode=method, info=info)
-                    auc = trainer.run()
-                    # select best performing model
-                    if auc > best_model[1]:
-                        best_model = [berti, auc, info]
+                # assign epochs and learning rate
+                trainer = training.TrainBERT(berti, train_loader, test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, mode=method, info=info)
+                auc_list = trainer.run()
+                # select best performing model
+                for i in range(len(auc_list)):
+                    if auc_list[i] > best_model[1]:
+                        # save: [model, auc value, hyperparameter info, epochs]
+                        best_model = [berti, auc_list[i], info, i]
         # validate
         auc_val = training.TrainBERT(best_model[0],test_dataloader=val_loader, epochs=1, mode = "validation", info="Validiation\n" + best_model[2])
-        print(f'Optimal hyperparameters are: {best_model[3]} with a ROC-AUC on validation set of: {auc_val}')
+        print(f'Optimal hyperparameters are: {best_model[3]}, epochs {best_model[3]} with a ROC-AUC on validation set of: {auc_val}')
 
     # TODO returns predicted labels for the test data?

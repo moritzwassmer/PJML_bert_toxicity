@@ -72,7 +72,7 @@ class TrainBERT:
         self.mode = mode
 
     def run(self):  
-        auc = 0   
+        auc_list = []  
         # write hyperparameters in output
         if self.mode == "hyperparameter":
                  self.write_results(self.info, self.train_res)
@@ -101,7 +101,7 @@ class TrainBERT:
 
 
             self.bar.total = len(self.testing_data.dataset)
-            auc = self.testing(epoch)
+            auc_list.append(self.testing(epoch))
 
             # reset progress bar
             self.bar.n = 0
@@ -110,7 +110,7 @@ class TrainBERT:
 
         self.bar.close()
                 
-        return auc
+        return auc_list
 
     def write_results(self, output, file):
         """

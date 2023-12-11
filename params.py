@@ -58,8 +58,8 @@ THRESHOLD = 0.5
 # see paper p. 13 f.
 HYPER_PARAMS = {
     'batch_size': [16,32,64],
-    'learning_rate': [5e-5, 3e-5, 2e-5, 1e-5],
-    'epochs': [2,3,4]
+    'learning_rate': [3e-5, 2e-5, 1e-5],
+    'epochs': 5
 }
 
 ORDER_LABELS = ['toxic', 'severe_toxic',
