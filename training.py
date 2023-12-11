@@ -81,7 +81,11 @@ class TrainBERT:
         if self.mode == "validation":
             self.bar = tqdm(total=len(self.testing_data.dataset), desc=f'Validation', position=0)
             self.bar.total = len(self.testing_data.dataset)
-            auc_list.append(self.testing(epoch))
+            auc_list.append(self.testing(self.epochs))
+                            # reset progress bar
+            self.bar.n = 0
+            self.bar.last_print_n = 0
+            self.bar.refresh()
             self.bar.close()
 
         # run training, testing
@@ -255,8 +259,11 @@ class TrainBERT:
             # average AUC-score over all classes, for individual one vs. rest score: average=None
             auc = roc_auc_score(all_labels, all_predictions)
 
-        # print stats for testing
-        message = f"\nTesting epoch {epoch+1}\nAvg. testing loss: {avg_loss / len(self.testing_data):.2f}, avg. ROC-AUC: {auc:.2f}, Accuracy: {T / total:.2f}, TPR: {TP/P:.2f}, TNR: {TN/N:.2f}\n"
+        # print stats for testing/ validation
+        if self.mode == "validation":
+            message = f"\nValidation\nAvg. validation loss: {avg_loss / len(self.testing_data):.2f}, avg. ROC-AUC: {auc:.2f}, Accuracy: {T / total:.2f}, TPR: {TP/P:.2f}, TNR: {TN/N:.2f}\n"
+        else:
+            message = f"\nTesting epoch {epoch+1}\nAvg. testing loss: {avg_loss / len(self.testing_data):.2f}, avg. ROC-AUC: {auc:.2f}, Accuracy: {T / total:.2f}, TPR: {TP/P:.2f}, TNR: {TN/N:.2f}\n"
         print(message)
 
         # write results
