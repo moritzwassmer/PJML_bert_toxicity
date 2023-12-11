@@ -52,7 +52,7 @@ class TrainBERT:
         self.epochs = epochs
         self.training_data = train_dataloader
         self.testing_data = test_dataloader
-        self.bar = tqdm(total=len(self.training_data.dataset), desc=f'Training', position=0)
+        self.bar = None
         # model to device
         self.model.to(DEVICE)
 
@@ -74,14 +74,22 @@ class TrainBERT:
     def run(self):  
         auc_list = []  
         # write hyperparameters in output
-        if self.mode == "hyperparameter":
-                 self.write_results(self.info, self.train_res)
-                 self.write_results(self.info, self.test_res)
+        if self.mode != "train_test":
+            self.write_results(self.info, self.train_res)
+            self.write_results(self.info, self.test_res)
 
-        # run training
-        for epoch in range(self.epochs):
+        if self.mode == "validation":
+            self.bar = tqdm(total=len(self.testing_data.dataset), desc=f'Validation', position=0)
+            self.bar.total = len(self.testing_data.dataset)
+            auc_list.append(self.testing(epoch))
+            self.bar.close()
+
+        # run training, testing
+        else:
+            self.bar = tqdm(total=len(self.training_data.dataset), desc=f'Training', position=0)
+            
+            for epoch in range(self.epochs):
             # training case 
-            if self.mode != "validation":
                 self.bar.set_description(f"Training epoch {epoch+1}")
                 self.bar.total = len(self.training_data.dataset)
 
@@ -92,23 +100,16 @@ class TrainBERT:
                 self.bar.last_print_n = 0
                 self.bar.refresh()
 
-            # test case
+                # test case
                 self.bar.set_description(f"Testing epoch {epoch+1}")
+                self.bar.total = len(self.testing_data.dataset)
+                
+                auc_list.append(self.testing(epoch))
 
-            # validation case
-            else:
-                self.bar.set_description(f"Valdiation")
-
-
-            self.bar.total = len(self.testing_data.dataset)
-            auc_list.append(self.testing(epoch))
-
-            # reset progress bar
-            self.bar.n = 0
-            self.bar.last_print_n = 0
-            self.bar.refresh()
-
-        self.bar.close()
+                # reset progress bar
+                self.bar.n = 0
+                self.bar.last_print_n = 0
+                self.bar.refresh()
                 
         return auc_list
 

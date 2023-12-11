@@ -93,7 +93,8 @@ def train_apply(method="train_test", dataset="jigsaw_toxicity_pred"):
                         # save: [model, auc value, hyperparameter info, epochs]
                         best_model = [berti, auc_list[i], info, i]
         # validate
-        auc_val = training.TrainBERT(best_model[0],test_dataloader=val_loader, epochs=1, mode = "validation", info="Validiation\n" + best_model[2])
-        print(f'Optimal hyperparameters are: {best_model[3]}, epochs {best_model[3]} with a ROC-AUC on validation set of: {auc_val}')
+        validator= training.TrainBERT(best_model[0],test_dataloader=val_loader, epochs=1, mode = "validation", info="Validiation\n" + best_model[2])
+        auc_val = validator.run()
+        print(f'Optimal hyperparameters are: {best_model[2][:-1]}, epochs: {best_model[3]+1}, with a ROC-AUC on validation set of: {auc_val[0]:.2f}')
 
     # TODO returns predicted labels for the test data?
