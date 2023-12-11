@@ -1,4 +1,6 @@
 import os
+import numpy as np
+from sklearn.metrics import roc_auc_score
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -35,7 +37,7 @@ class TrainBERT:
  
     """
 
-    def __init__(self, model, train_dataloader=None, test_dataloader=None, epochs=EPOCHS, learning_rate=LEARNING_RATE):
+    def __init__(self, model, train_dataloader=None, test_dataloader=None, epochs=EPOCHS, learning_rate=LEARNING_RATE, mode='train_test', info=None):
         """
         Initializes a training and a testing processes.
 
@@ -50,9 +52,7 @@ class TrainBERT:
         self.epochs = epochs
         self.training_data = train_dataloader
         self.testing_data = test_dataloader
-        self.bar = tqdm(
-            total=len(self.training_data.dataset), desc=f'Training', position=0)
-
+        self.bar = tqdm(total=len(self.training_data.dataset), desc=f'Training', position=0)
         # model to device
         self.model.to(DEVICE)
 
@@ -66,30 +66,51 @@ class TrainBERT:
             reduction="mean",
             pos_weight=torch.Tensor(WEIGHTS_LIST).to(DEVICE)
         )
+        self.info = info
+        self.train_res = "training_results"
+        self.test_res = "testing_results"
+        self.mode = mode
+
+    def run(self):  
+        auc = 0   
+        # write hyperparameters in output
+        if self.mode == "hyperparameter":
+                 self.write_results(self.info, self.train_res)
+                 self.write_results(self.info, self.test_res)
 
         # run training
         for epoch in range(self.epochs):
-            self.bar.set_description(f"Training epoch {epoch+1}")
-            self.bar.total = len(self.training_data.dataset)
+            # training case 
+            if self.mode != "validation":
+                self.bar.set_description(f"Training epoch {epoch+1}")
+                self.bar.total = len(self.training_data.dataset)
 
-            self.training(epoch)
+                self.training(epoch)
+
+                # reset progress bar
+                self.bar.n = 0
+                self.bar.last_print_n = 0
+                self.bar.refresh()
+
+            # test case
+                self.bar.set_description(f"Testing epoch {epoch+1}")
+
+            # validation case
+            else:
+                self.bar.set_description(f"Valdiation")
+
+
+            self.bar.total = len(self.testing_data.dataset)
+            auc = self.testing(epoch)
 
             # reset progress bar
             self.bar.n = 0
             self.bar.last_print_n = 0
             self.bar.refresh()
 
-            # testing case
-            if self.testing_data is not None:
-                self.bar.set_description(f"Testing epoch {epoch+1}")
-                self.bar.total = len(self.testing_data.dataset)
-
-                self.testing(epoch)
-
-                # reset progress bar
-                self.bar.n = 0
-                self.bar.last_print_n = 0
-                self.bar.refresh()
+        self.bar.close()
+                
+        return auc
 
     def write_results(self, output, file):
         """
@@ -118,10 +139,11 @@ class TrainBERT:
         TN = 0
         TP = 0
         P = 0
+        N = 0
 
         for i, data in enumerate(self.training_data):
             # update progress bar
-            self.bar.update(self.training_data.batch_size)
+            self.bar.update(data['input'].size(0))
 
             # send data to GPU/CPU
             data = {key: value.to(DEVICE) for key, value in data.items()}
@@ -152,6 +174,7 @@ class TrainBERT:
             TN += ((preds_th == 0) & (labels == 0)).sum().item()
             TP += ((preds_th == 1) & (labels == 1)).sum().item()
             P += (labels == 1).sum().item()
+            N += (labels == 0).sum().item()
             # sump up total number of labels in batch
             total += labels.nelement()
 
@@ -159,14 +182,11 @@ class TrainBERT:
         self.scheduler.step()
 
         # print stats
-        message1 = "\nTraining epoch {}\nAvg. training loss: {:.2f}\nAccuracy: {:.2f}\nCorrect predictions: {} of which true negatives: {}".format(
-            epoch+1, avg_loss / len(self.training_data), T / total, T, TN)
-        message2 = "\nTrue positives: {} of positives: {}\n".format(TP, P)
-        message = message1+message2
+        message = f"\nTraining epoch {epoch+1}\nAvg. training loss: {avg_loss / len(self.training_data):.2f}, Accuracy: {T / total:.2f}, TPR: {TP/P:.2f}, TNR: {TN/N:.2f}\n"
         print(message)
 
         # write in results
-        self.write_results(message, "training_results")
+        self.write_results(message, self.train_res)
 
     def testing(self, epoch):
         """
@@ -179,17 +199,21 @@ class TrainBERT:
         # model to evaluation mode
         self.model.eval()
 
+        auc = None
         avg_loss = 0.0
         T = 0
         total = 0
         TN = 0
         TP = 0
         P = 0
+        N = 0
+        all_labels = []
+        all_predictions = []
 
         with torch.no_grad():
             for i, data in enumerate(self.testing_data):
                 # update progress bar
-                self.bar.update(self.testing_data.batch_size)
+                self.bar.update(data['input'].size(0))
 
                 # send data to GPU/CPU
                 data = {key: value.to(DEVICE)
@@ -218,19 +242,26 @@ class TrainBERT:
                 TN += ((predictions == 0) & (labels == 0)).sum().item()
                 TP += ((predictions == 1) & (labels == 1)).sum().item()
                 P += (labels == 1).sum().item()
+                N += (labels == 0).sum().item()
 
                 # sum up total number of labels in batch
                 total += labels.nelement()
 
+                # labels and predictions for AUC
+                all_labels.extend(labels.cpu().numpy())
+                all_predictions.extend(preds.cpu().numpy())
+
+            # average AUC-score over all classes, for individual one vs. rest score: average=None
+            auc = roc_auc_score(all_labels, all_predictions)
+
         # print stats for testing
-        message1 = "\nTesting epoch {}\nAvg. training loss: {:.2f}\nAccuracy: {:.2f}\nCorrect predictions: {} of which true negatives: {}".format(
-            epoch+1, avg_loss / len(self.testing_data), T / total, T, TN)
-        message2 = "\nTrue positives: {} of positives: {}\n".format(TP, P)
-        message = message1+message2
+        message = f"\nTesting epoch {epoch+1}\nAvg. testing loss: {avg_loss / len(self.testing_data):.2f}, avg. ROC-AUC: {auc:.2f}, Accuracy: {T / total:.2f}, TPR: {TP/P:.2f}, TNR: {TN/N:.2f}\n"
         print(message)
 
         # write results
-        self.write_results(message, "testing_results")
+        self.write_results(message, self.test_res)
 
         # Set the model back to training mode
         self.model.train()
+
+        return auc

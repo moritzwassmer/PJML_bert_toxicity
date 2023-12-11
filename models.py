@@ -408,7 +408,7 @@ class BERTBase(nn.Module):
             # self.position = BERTBase.BertEmbedding.PositionEmbedding()
 
             # use torch.nn.Embedding for position embedding, for weights to be transferable
-            self.position = nn.Embedding(SEQ_LEN, EMBED_SIZE, padding_idx=0).to(DEVICE) 
+            self.position = nn.Embedding(SEQ_LEN, EMBED_SIZE).to(DEVICE) 
             self.segment = nn.Embedding(2, EMBED_SIZE, padding_idx=0)
             self.normlayer = nn.LayerNorm(EMBED_SIZE, eps=EPS)
             self.dropout = torch.nn.Dropout(p=DROPOUT)
@@ -473,7 +473,7 @@ class BERTBase(nn.Module):
         self.embedding.segment.load_state_dict(
             pretrained_model.embeddings.token_type_embeddings.state_dict(), strict=False)
         # load_state_dict for position embedding
-        #self.embedding.position.load_state_dict(pretrained_model.embeddings.position_embeddings.state_dict(), strict=False)
+        self.embedding.position.load_state_dict(pretrained_model.embeddings.position_embeddings.state_dict(), strict=False)
         # load_state_dict for LayerNorm
         self.embedding.normlayer.load_state_dict(pretrained_model.embeddings.LayerNorm.state_dict(), strict=False)
 

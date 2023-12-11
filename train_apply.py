@@ -43,7 +43,7 @@ def load_data(dataset: str, transformation=None, n_train: int = None, n_test: in
 
             # initialize dataloader for testing and validation
             test = DataLoader(test, batch_size, shuffle)
-            val = DataLoader(test, batch_size, shuffle)
+            val = DataLoader(val, batch_size, shuffle)
 
             return train, test, val
         
@@ -58,7 +58,7 @@ def load_data(dataset: str, transformation=None, n_train: int = None, n_test: in
         raise NotImplementedError("Dataset not implemented")
     
 # Task sheet function: method ={"train_test", "hyperparameter"}
-def train_apply(method="method_name", dataset="jigsaw_toxicity_pred"):
+def train_apply(method="train_test", dataset="jigsaw_toxicity_pred"):
     if method == "train_test":
         # load the entire training data (length dataset_length) into train, test
         train_loader, test_loader = load_data(dataset, transformation=TOKENIZER, n_train=TRAIN_LENGTH, n_test=TEST_LENGTH, batch_size=BATCH_SIZE, shuffle=True)
@@ -67,22 +67,32 @@ def train_apply(method="method_name", dataset="jigsaw_toxicity_pred"):
         berti = models.Model()
 
         # train model (device to be updated according to cluster GPU)
-        training.TrainBERT(berti, train_loader, test_loader)
+        trainer = training.TrainBERT(berti, train_loader, test_loader, mode=method)
+        _ = trainer.run()
 
     elif method == "hyperparameter":
-        
+        # define batch size
         for batch_size in HYPER_PARAMS['batch_size']:
-            # define batch size
             train_loader, test_loader, val_loader = load_data(dataset, transformation=TOKENIZER, n_train=TRAIN_LENGTH, n_test=TEST_LENGTH, n_val=VAL_LENGTH, batch_size=batch_size, shuffle=True)
+            best_model = [None, 0, None]
 
             for learning_rate in HYPER_PARAMS['learning_rate']:
                 for epochs in HYPER_PARAMS['epochs']:
+                    # hyperparameter stats
+                    info = f"\nHyperparameters: batch size: {batch_size}, learning rate: {learning_rate}, epochs: {epochs}\n"
+                    print(info)
+
                     # set up new model
                     berti = models.Model()
                     
                     # assign epochs and learning rate
-                    training.TrainBERT(berti, train_loader, test_loader, epochs=epochs, learning_rate=learning_rate)
+                    trainer = training.TrainBERT(berti, train_loader, test_loader, epochs=epochs, learning_rate=learning_rate, mode=method, info=info)
+                    auc = trainer.run()
+                    # select best performing model
+                    if auc > best_model[1]:
+                        best_model = [berti, auc, info]
+        # validate
+        auc_val = training.TrainBERT(best_model[0],test_dataloader=val_loader, epochs=1, mode = "validation", info="Validiation\n" + best_model[2])
+        print(f'Optimal hyperparameters are: {best_model[3]} with a ROC-AUC on validation set of: {auc_val}')
 
-                    # TODO save test metrics to compare
-    # TODO select best model and validate
-    # TODO returns predicted labels for the test data
+    # TODO returns predicted labels for the test data?
