@@ -259,7 +259,7 @@ class TrainBERT:
             # average AUC-score over all classes, for individual one vs. rest score: average=None
             auc = roc_auc_score(all_labels, all_predictions)
 
-        # print stats for testing/ validation
+        # print stats for testing/validation
         if self.mode == "validation":
             message = f"\nValidation\nAvg. validation loss: {avg_loss / len(self.testing_data):.2f}, avg. ROC-AUC: {auc:.2f}, Accuracy: {T / total:.2f}, TPR: {TP/P:.2f}, TNR: {TN/N:.2f}\n"
         else:

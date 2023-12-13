@@ -57,20 +57,29 @@ def load_data(dataset: str, transformation=None, n_train: int = None, n_test: in
     else:
         raise NotImplementedError("Dataset not implemented")
     
-# Task sheet function: method ={"train_test", "hyperparameter"}
-def train_apply(method="train_test", dataset="jigsaw_toxicity_pred"):
-    if method == "train_test":
+# Task sheet function: mode ={"train_test", "hyperparameter"}, method ={"bert_base"}
+def train_apply(method="bert_base",mode="train_test", dataset="jigsaw_toxicity_pred"):
+
+    if method == "bert_base":
+        berti = models.Model()
+    elif method == "bert_large":
+        pass
+        # TODO implement BERTLarge
+    else:
+        # default: BERTBase
+        berti = models.Model()
+
+    if mode == "train_test":
         # load the entire training data (length dataset_length) into train, test
         train_loader, test_loader = load_data(dataset, transformation=TOKENIZER, n_train=TRAIN_LENGTH, n_test=TEST_LENGTH, batch_size=BATCH_SIZE, shuffle=True)
 
-        # set up BERT model with toxic multi-label classification head
-        berti = models.Model()
-
         # train model (device to be updated according to cluster GPU)
-        trainer = training.TrainBERT(berti, train_loader, test_loader, mode=method)
+        trainer = training.TrainBERT(berti, train_loader, test_loader, mode=mode)
         _ = trainer.run()
 
-    elif method == "hyperparameter":
+        # TODO returns predicted labels for the test data
+
+    elif mode == "hyperparameter":
         # define batch size
         for batch_size in HYPER_PARAMS['batch_size']:
             train_loader, test_loader, val_loader = load_data(dataset, transformation=TOKENIZER, n_train=TRAIN_LENGTH, n_test=TEST_LENGTH, n_val=VAL_LENGTH, batch_size=batch_size, shuffle=True)
@@ -80,12 +89,9 @@ def train_apply(method="train_test", dataset="jigsaw_toxicity_pred"):
                 # hyperparameter stats
                 info = f"\nHyperparameters: batch size: {batch_size}, learning rate: {learning_rate}\n"
                 print(info)
-
-                # set up new model
-                berti = models.Model()
                     
                 # assign epochs and learning rate
-                trainer = training.TrainBERT(berti, train_loader, test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, mode=method, info=info)
+                trainer = training.TrainBERT(berti, train_loader, test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, mode=mode, info=info)
                 auc_list = trainer.run()
                 # select best performing model
                 for i in range(len(auc_list)):
@@ -96,5 +102,4 @@ def train_apply(method="train_test", dataset="jigsaw_toxicity_pred"):
         validator= training.TrainBERT(best_model[0],test_dataloader=val_loader, epochs=1, mode = "validation", info="Validiation\n" + best_model[2])
         auc_val = validator.run()
         print(f'Optimal hyperparameters are: {best_model[2][:-1]}, epochs: {best_model[3]+1}, with a ROC-AUC on validation set of: {auc_val[0]:.2f}')
-
-    # TODO returns predicted labels for the test data?
+        # TODO returns predicted labels for the test data

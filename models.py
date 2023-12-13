@@ -326,69 +326,7 @@ class BERTBase(nn.Module):
             normlayer (nn.LayerNorm): Layer normalization
             dropout (torch.nn.Dropout): Dropout layer
         """
-        # Since nn.Embedding is now used for position embedding, this is superfluous -> DELETE?
-        class PositionEmbedding(torch.nn.Module):
-            """
-                Generates positional embeddings for input sequences.
-                The positional embeddings are created only once during initialization and are not updated during gradient descent.
-
-                Args:
-                    embed_size (int): Dimensionality of the embedding vector (default is EMBED_SIZE).
-                    seq_len (int): Length of the input sequence (default is SEQ_LEN).
-
-                Methods:
-                    create_embedding_matrix(embed_size, seq_len): creates a positional embedding tensor
-
-            """
-
-            def create_embedding_matrix(self, embed_size, seq_len):
-                """
-                Creates a matrix that applies a positional embedding to the input.
-
-                Args:
-                    embed_size (int): Dimension of input vector
-                    seq_len (int): Length of the sequence
-
-                Returns:
-                    torch.Tensor: Matrix for positional embedding
-                """
-                embed_matrix = torch.zeros(seq_len, embed_size, device=DEVICE).float()
-
-                # positional encoding not to be updated during gradient descent
-                embed_matrix.requires_grad = False
-
-                # compute embedding for each position in input
-                for position in range(seq_len):
-                    embed_matrix[position, ::2] = torch.sin(
-                        position / (10000 ** (2 * torch.arange(0, embed_size, 2) / embed_size)))
-                    embed_matrix[position, 1::2] = torch.cos(
-                        position / (10000 ** (2 * torch.arange(0, embed_size, 2) / embed_size)))
-
-                # batch dimension first    
-                embed_matrix = embed_matrix.unsqueeze(0)
-
-                return embed_matrix
-
-            def __init__(self, embed_size=EMBED_SIZE, seq_len=SEQ_LEN):
-                """
-                Initializes a positional embedding (PositionEmbedding module).
-                """
-                super().__init__()
-                self.pos_embedding = self.create_embedding_matrix(
-                    embed_size, seq_len)
-
-            def forward(self,x):
-                """
-                Forward pass for positional embedding. 
-
-                Args: 
-                    x (torch.Tensor): Input tensor
-
-                Returns:
-                    torch.Tensor: Positional embedding of the input
-                """
-                return self.pos_embedding
-
+        
         def __init__(self):
             """
             Initializes the BertEmbedding for token, position, and segment embeddings of the raw input.
@@ -404,10 +342,6 @@ class BERTBase(nn.Module):
             # token embedding: transforms (vocabulary size, number of tokens) into (vocabulary size, number of tokens, length of embedding vector) -> is the other tokenization obsolete (in custom_datasets.py)?
             self.token = nn.Embedding(VOCAB_SIZE, EMBED_SIZE, padding_idx=0).to(
                 DEVICE)  # padding remains 0 during training
-            # embedding of position
-            # self.position = BERTBase.BertEmbedding.PositionEmbedding()
-
-            # use torch.nn.Embedding for position embedding, for weights to be transferable
             self.position = nn.Embedding(SEQ_LEN, EMBED_SIZE).to(DEVICE) 
             self.segment = nn.Embedding(2, EMBED_SIZE, padding_idx=0)
             self.normlayer = nn.LayerNorm(EMBED_SIZE, eps=EPS)
