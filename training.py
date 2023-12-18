@@ -9,6 +9,27 @@ from tqdm import tqdm
 
 from params import *
 
+class SlantedDiscriminativeLR(torch.optim.lr_scheduler._LRScheduler):
+    def __init__(self, optimizer, iterations, ratio=32, lambda_max=0.01, cut_frac=0.1, last_epoch=-1, decay=2.6):
+        self.lambda_max = lambda_max
+        self.cut = iterations * cut_frac
+        self.cut_frac = cut_frac
+        self.iterations = iterations
+        self.ratio = ratio
+        self.decay = decay
+        super().__init__(optimizer, last_epoch)
+    
+    def get_lr(self):
+        p = 0
+        t = self.last_epoch % self.iterations
+        if t < self.cut:
+            p = t/self.cut
+        else:
+            p = 1-((t-self.cut)/(self.cut*(1/(self.cut_frac-1))))
+        learning_rate = self.lambda_max * ((1+p*(self.ratio -1))/self.ratio) 
+        # apply discriminative layer rate layer-wise
+        return [learning_rate/(self.decay**i) for i in range(len(self.optimizer.param_groups))]
+
 
 class TrainBERT:
     """
@@ -28,16 +49,16 @@ class TrainBERT:
             optimizer (torch.optim.Adam): Adam optimizer
             scheduler (torch.optim.lr_scheduler.StepLR): Scheduler for learning rate
             criterion (nn.BCEWithLogitsLoss): Binary cross-entropy loss with logits
-        
+
         Methods:
             write_results(output, file): Writes the output measures of training and testing loop into a txt. file
             training(epoch): Performs a training of the model for the epoch
             testing(epoch): Performs a test of the model for the epoch
 
- 
+
     """
 
-    def __init__(self, model, train_dataloader=None, test_dataloader=None, epochs=EPOCHS, learning_rate=LEARNING_RATE, mode='train_test', info=None):
+    def __init__(self, model, scheduler=None, train_dataloader=None, test_dataloader=None, epochs=EPOCHS, learning_rate=LEARNING_RATE, validate=False, info=None):
         """
         Initializes a training and a testing processes.
 
@@ -53,13 +74,20 @@ class TrainBERT:
         self.training_data = train_dataloader
         self.testing_data = test_dataloader
         self.bar = None
+        self.metrics = None
         # model to device
         self.model.to(DEVICE)
 
         # optimizer: Adam
         self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
+
         # learning rate scheduler
-        self.scheduler = StepLR(self.optimizer, step_size=5, gamma=0.1)
+        if scheduler == 'bert_slanted':
+            iterations = self.epochs*len(train_dataloader)
+            self.scheduler = SlantedDiscriminativeLR(self.optimizer, iterations)
+        # default
+        else:
+            self.scheduler = StepLR(self.optimizer, step_size=5, gamma=0.1)
 
         # loss treats every output as an own random variable
         self.criterion = nn.BCEWithLogitsLoss(
@@ -69,20 +97,19 @@ class TrainBERT:
         self.info = info
         self.train_res = "training_results"
         self.test_res = "testing_results"
-        self.mode = mode
+        self.validate = validate
 
-    def run(self):  
-        auc_list = []  
+    def run(self):
+        auc_list = []
         # write hyperparameters in output
-        if self.mode != "train_test":
-            self.write_results(self.info, self.train_res)
-            self.write_results(self.info, self.test_res)
+        self.write_results(self.info, self.train_res)
+        self.write_results(self.info, self.test_res)
 
-        if self.mode == "validation":
-            self.bar = tqdm(total=len(self.testing_data.dataset), desc=f'Validation', position=0)
-            self.bar.total = len(self.testing_data.dataset)
+        if self.validate:
+            self.bar = tqdm(position=0, total=len(
+                self.testing_data.dataset), desc="Validation")
             auc_list.append(self.testing(self.epochs))
-                            # reset progress bar
+
             self.bar.n = 0
             self.bar.last_print_n = 0
             self.bar.refresh()
@@ -90,12 +117,10 @@ class TrainBERT:
 
         # run training, testing
         else:
-            self.bar = tqdm(total=len(self.training_data.dataset), desc=f'Training', position=0)
-            
             for epoch in range(self.epochs):
-            # training case 
-                self.bar.set_description(f"Training epoch {epoch+1}")
-                self.bar.total = len(self.training_data.dataset)
+                # training case
+                self.bar = tqdm(position=0, total=len(
+                    self.training_data.dataset), desc=f"Training epoch {epoch+1}")
 
                 self.training(epoch)
 
@@ -107,14 +132,14 @@ class TrainBERT:
                 # test case
                 self.bar.set_description(f"Testing epoch {epoch+1}")
                 self.bar.total = len(self.testing_data.dataset)
-                
+
                 auc_list.append(self.testing(epoch))
 
                 # reset progress bar
                 self.bar.n = 0
                 self.bar.last_print_n = 0
                 self.bar.refresh()
-                
+            self.bar.close()
         return auc_list
 
     def write_results(self, output, file):
@@ -126,7 +151,7 @@ class TrainBERT:
             file (str): File path
         """
         os.makedirs(OUTPUT, exist_ok=True)
-        
+
         with open(os.path.join(OUTPUT, f'{file}.txt'), "a") as file:
             file.write(output)
 
@@ -138,13 +163,11 @@ class TrainBERT:
             epoch (int): Current epoch of training
         """
         # init stats
-        avg_loss = 0.0
-        T = 0
+        T, TN, TP, FP, FN, P, N = 0, 0, 0, 0, 0, 0, 0
         total = 0
-        TN = 0
-        TP = 0
-        P = 0
-        N = 0
+        avg_loss = 0.0
+        all_labels = []
+        all_predictions = []
 
         for i, data in enumerate(self.training_data):
             # update progress bar
@@ -167,27 +190,41 @@ class TrainBERT:
             self.optimizer.step()
 
             # COMPUTE METRICS
-            # Since we removed the last sigmoid activation function due to using the BCE loss with logits,
-            # we need to pass the model output through a sigmoid activation to obtain probabilities
             sigmoid = torch.nn.Sigmoid()
             preds = sigmoid(preds)
             preds_th = torch.ge(preds, THRESHOLD).int()
 
-            # compare with the label and count correct classifications
             T += (preds_th == labels).sum().item()
-            # check whether model is only predicting 0
-            TN += ((preds_th == 0) & (labels == 0)).sum().item()
             TP += ((preds_th == 1) & (labels == 1)).sum().item()
+            FP += ((preds_th == 1) & (labels == 0)).sum().item()
+            TN += ((preds_th == 0) & (labels == 0)).sum().item()
+            FN += ((preds_th == 0) & (labels == 1)).sum().item()
             P += (labels == 1).sum().item()
             N += (labels == 0).sum().item()
             # sump up total number of labels in batch
             total += labels.nelement()
 
-        # update learning rate scheduler
-        self.scheduler.step()
+            # labels and predictions for AUC
+            all_labels.extend(labels.detach().numpy()) # TODO move to GPU
+            all_predictions.extend(preds.detach().numpy()) # TODO move to GPU
 
-        # print stats
-        message = f"\nTraining epoch {epoch+1}\nAvg. training loss: {avg_loss / len(self.training_data):.2f}, Accuracy: {T / total:.2f}, TPR: {TP/P:.2f}, TNR: {TN/N:.2f}\n"
+        # update learning rate scheduler
+        self.scheduler.step(epoch)
+
+        # calculate metrics
+        self.metrics = {
+            'epoch': epoch+1,
+            'avg_loss': avg_loss / len(self.training_data),
+            'roc_auc': roc_auc_score(all_labels, all_predictions),
+            'accuracy': T / total,
+            'TPR': TP/P,
+            'FPR': FP/(FP+TN),
+            'TNR': TN/N,
+            'FNR': FN/(FN+TP)
+        }
+
+        # print metrics
+        message = f"\nTraining epoch {self.metrics['epoch']}\nAvg. training loss: {self.metrics['avg_loss']:.2f}, ROC-AUC: {self.metrics['roc_auc']:.2f}, Accuracy: {self.metrics['accuracy']:.2f}, TPR: {self.metrics['TPR']:.2f}, TNR: {self.metrics['TNR']:.2f}\n"
         print(message)
 
         # write in results
@@ -204,14 +241,10 @@ class TrainBERT:
         # model to evaluation mode
         self.model.eval()
 
-        auc = None
+        # init stats
+        T, TN, TP, FP, FN, P, N = 0, 0, 0, 0, 0, 0, 0
         avg_loss = 0.0
-        T = 0
         total = 0
-        TN = 0
-        TP = 0
-        P = 0
-        N = 0
         all_labels = []
         all_predictions = []
 
@@ -234,42 +267,55 @@ class TrainBERT:
 
                 avg_loss += loss.item()
 
-                # compute measures
-                # use THRESHOLD to determine which of the outputs are considered True
-                sigmoid = torch.nn.Sigmoid()  
+                # COMPUTE METRICS
+                sigmoid = torch.nn.Sigmoid()
                 preds = sigmoid(preds)
-                predictions = torch.ge(preds, THRESHOLD).int()
+                preds_th = torch.ge(preds, THRESHOLD).int()
 
-                # compare with the label and count correct classifications
-                T += (predictions == labels).sum().item()
-
-                # check whether model is only predicting 0
-                TN += ((predictions == 0) & (labels == 0)).sum().item()
-                TP += ((predictions == 1) & (labels == 1)).sum().item()
+                T += (preds_th == labels).sum().item()
+                TP += ((preds_th == 1) & (labels == 1)).sum().item()
+                FP += ((preds_th == 1) & (labels == 0)).sum().item()
+                TN += ((preds_th == 0) & (labels == 0)).sum().item()
+                FN += ((preds_th == 0) & (labels == 1)).sum().item()
                 P += (labels == 1).sum().item()
                 N += (labels == 0).sum().item()
-
-                # sum up total number of labels in batch
+                # sump up total number of labels in batch
                 total += labels.nelement()
 
                 # labels and predictions for AUC
-                all_labels.extend(labels.cpu().numpy())
-                all_predictions.extend(preds.cpu().numpy())
+                all_labels.extend(labels.detach().numpy()) # TODO move to GPU
+                all_predictions.extend(preds.detach().numpy()) # TODO move to GPU
 
-            # average AUC-score over all classes, for individual one vs. rest score: average=None
-            auc = roc_auc_score(all_labels, all_predictions)
+            # calculate metrics
+            self.metrics = {
+                'epoch': epoch+1,
+                'avg_loss': avg_loss / len(self.testing_data),
+                'roc_auc': roc_auc_score(all_labels, all_predictions),
+                'accuracy': T / total,
+                'TPR': TP/P,
+                'FPR': FP/(FP+TN),
+                'TNR': TN/N,
+                'FNR': FN/(FN+TP),
+                'toxic': roc_auc_score(np.array(all_labels)[:,0],np.array(all_predictions)[:,0]), 
+                'severe_toxic': roc_auc_score(np.array(all_labels)[:,1],np.array(all_predictions)[:,1]), 
+                'obscene': roc_auc_score(np.array(all_labels)[:,2],np.array(all_predictions)[:,2]),  
+                'threat': roc_auc_score(np.array(all_labels)[:,3],np.array(all_predictions)[:,3]), 
+                'insult': roc_auc_score(np.array(all_labels)[:,4],np.array(all_predictions)[:,4]),  
+                'identity_hate': roc_auc_score(np.array(all_labels)[:,5],np.array(all_predictions)[:,5]) 
+            }
 
-        # print stats for testing/validation
-        if self.mode == "validation":
-            message = f"\nValidation\nAvg. validation loss: {avg_loss / len(self.testing_data):.2f}, avg. ROC-AUC: {auc:.2f}, Accuracy: {T / total:.2f}, TPR: {TP/P:.2f}, TNR: {TN/N:.2f}\n"
+        if not self.validate:
+            message = f"\nTesting epoch {self.metrics['epoch']:.2f}\nAvg. testing loss: {self.metrics['avg_loss']:.2f}, avg. ROC-AUC: {self.metrics['roc_auc']:.2f}, Accuracy: {self.metrics['accuracy']:.2f}, TPR: {self.metrics['TPR']:.2f}, FPR: {self.metrics['FPR']:.2f}, TNR: {self.metrics['TNR']:.2f}, FNR: {self.metrics['FNR']:.2f}\n"
+            auc_classes = '\n'.join([f'ROC-AUC for {label}: {self.metrics[label]}'for label in ORDER_LABELS])
+            message = message + auc_classes
+            print(message)
+
+            # write results
+            self.write_results(message, self.test_res)
+
+            # Set the model back to training mode
+            self.model.train()
+            
+            return self.metrics['roc_auc']
         else:
-            message = f"\nTesting epoch {epoch+1}\nAvg. testing loss: {avg_loss / len(self.testing_data):.2f}, avg. ROC-AUC: {auc:.2f}, Accuracy: {T / total:.2f}, TPR: {TP/P:.2f}, TNR: {TN/N:.2f}\n"
-        print(message)
-
-        # write results
-        self.write_results(message, self.test_res)
-
-        # Set the model back to training mode
-        self.model.train()
-
-        return auc
+            return all_labels, all_predictions

@@ -197,9 +197,7 @@ def main():
     # Note, that plotting number of tokens per label/distribution takes time to process, since data from csv is tokenized first
 
     # Training (for cluster)
-    train_apply(mode="hyperparameter")
-
-
+    labels, predictions = train_apply(method='bert_discrim_lr')
 
 if __name__ == "__main__":
     main()

@@ -37,8 +37,8 @@ Parameters for configuration:
 
 # DATASET PATH
 
-TOXIC = r"C:/Users/Johannes/Project Machine Learning/datasets/finetuning/toxic_comment/"  # Johannes
-# TOXIC = r"/home/space/datasets/toxic_comment/" # cluster path
+# TOXIC = r"C:/Users/Johannes/Project Machine Learning/datasets/finetuning/toxic_comment/"  # Johannes
+TOXIC = r"/home/space/datasets/toxic_comment/" # cluster path
 # TOXIC = r"C:\Users\morit\OneDrive\UNI\Master\WS23\PML\repo\bert_from_scratch.toxic_comment\datasets\finetuning\kaggle-toxic_comment/" # Moritz
 
 # OUTPUT PATH
@@ -47,9 +47,11 @@ OUTPUT = "output_folder" # output folder
 
 # RUN SPECIFIC
 
-TRAIN_LENGTH = 12800 # 159571  # length of training set
-TEST_LENGTH = 25600 # 63978  # length of test set
+TRAIN_LENGTH = 159571  # length of training set
+TRAIN_TOTAL = 159571 # length of total training set
+TEST_LENGTH = 63978  # length of test set
 VAL_LENGTH = TEST_LENGTH//2 # length of validation set
+NUM_CLASSES = 6 
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 BATCH_SIZE = 32 
 EPOCHS = 10
@@ -58,22 +60,37 @@ THRESHOLD = 0.5
 # see paper p. 13 f.
 HYPER_PARAMS = {
     'batch_size': [16,32,64],
-    'learning_rate': [3e-5, 2e-5, 1e-5],
-    'epochs': 5
+    'learning_rate': [2e-5, 1e-5, 5e-6],
+    'epochs': 4
 }
 
 ORDER_LABELS = ['toxic', 'severe_toxic',
                 'obscene', 'threat', 'insult', 'identity_hate']
-
+"""
+# original balancing
 CLASS_WEIGHTS = {
-    'toxic': 10.433568719759382,
-    'severe_toxic': 100.04451410658307,
-    'obscene': 18.886377086045687,
-    'threat': 333.8305439330544,
-    'insult': 20.257839278913295,
-    'identity_hate': 113.57366548042704}
+ 'toxic': (TRAIN_TOTAL/15294),
+ 'severe_toxic':  (TRAIN_TOTAL/1595),
+ 'obscene':  (TRAIN_TOTAL/8449),
+ 'threat':  (TRAIN_TOTAL/478),
+ 'insult':  (TRAIN_TOTAL/7877),
+ 'identity_hate':  (TRAIN_TOTAL/1405)
+}
+
+"""
+# weight_for_class_i = total_samples / (num_samples_in_class_i * num_classes)
+CLASS_WEIGHTS = {
+ 'toxic': (TRAIN_TOTAL/(15294*NUM_CLASSES)),
+ 'severe_toxic': (TRAIN_TOTAL/(1595*NUM_CLASSES)),
+ 'obscene':  TRAIN_TOTAL/(8449*NUM_CLASSES),
+ 'threat':  TRAIN_TOTAL/(478*NUM_CLASSES),
+ 'insult': TRAIN_TOTAL/(7877*NUM_CLASSES),
+ 'identity_hate':  TRAIN_TOTAL/(1405*NUM_CLASSES)
+}
+
 
 WEIGHTS_LIST = [CLASS_WEIGHTS[key] for key in ORDER_LABELS]
+
 
 # MODEL OR TOKENIZER SPECIFIC
 TOKENIZER = BertTokenizer.from_pretrained("bert-base-uncased")
