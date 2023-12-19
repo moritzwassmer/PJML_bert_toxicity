@@ -71,6 +71,7 @@ class SlantedDiscriminativeLR(torch.optim.lr_scheduler._LRScheduler):
         self.iterations = iterations
         self.ratio = ratio
         self.decay = decay
+        print(self.cut)
         super().__init__(optimizer, last_epoch)
     
     def get_lr(self):
@@ -262,7 +263,7 @@ class TrainBERT:
                 # Print the current learning rate
                 current_lr = self.optimizer.param_groups[0]['lr']
                 # check learning rates (write in 'learning_rates' in output_folder)
-                write_results(current_lr, "learning_rates")
+                write_results(str(current_lr) + '\n', "learning_rates")
 
         # update normal learning rate scheduler
         if self.mode == 'bert_base':
