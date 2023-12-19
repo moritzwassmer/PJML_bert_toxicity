@@ -47,9 +47,9 @@ OUTPUT = "output_folder" # output folder
 
 # RUN SPECIFIC
 
-TRAIN_LENGTH = 1280 # 159571  # length of training set
+TRAIN_LENGTH = 159571  # length of training set
 TRAIN_TOTAL = 159571 # length of total training set
-TEST_LENGTH = 2560 # 63978  # length of test set
+TEST_LENGTH = 63978  # length of test set
 VAL_LENGTH = TEST_LENGTH//2 # length of validation set
 NUM_CLASSES = 7 
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -58,15 +58,17 @@ EPOCHS = 10
 LEARNING_RATE = 0.00001
 THRESHOLD = 0.5
 # see paper p. 13 f.
+"""
 HYPER_PARAMS = {
     'batch_size': [16,32],
     'learning_rate': [2e-5, 1e-5, 5e-6],
     'epochs': 4
 }
+"""
 HYPER_PARAMS = {
-    'batch_size': [16],
+    'batch_size': [32],
     'learning_rate': [5e-6],
-    'epochs': 2
+    'epochs': 1
 }
 
 ORDER_LABELS = ['toxic', 'severe_toxic',

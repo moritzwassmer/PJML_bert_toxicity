@@ -84,7 +84,10 @@ class SlantedDiscriminativeLR(torch.optim.lr_scheduler._LRScheduler):
             p = 1 - ((self.t - self.cut) / (self.cut * (1 / self.cut_frac - 1)))
             learning_rate = self.eta_max * ((1 + p * (self.ratio - 1)) / self.ratio) 
         # apply discriminative layer rate layer-wise
-        return [learning_rate / (self.decay**i) for i in range(len(self.optimizer.param_groups))]
+        decay_lrs = [learning_rate / (self.decay**i) for i in range(len(self.optimizer.param_groups))]
+        for param_group, decay_lr in zip(self.optimizer.param_groups, decay_lrs):
+            param_group['lr'] = decay_lr
+        return decay_lrs
 
 
 class TrainBERT:
@@ -137,20 +140,23 @@ class TrainBERT:
         # model to device
         self.model.to(DEVICE)
 
-        # optimizer: Adam
-        self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
-
-        # learning rate scheduler
         if self.mode == 'bert_discr_lr':
+            # optimizer: Adam
+            self.optimizer = optim.Adam(self.get_model_params(), lr=learning_rate)
+
+            # learning rate scheduler
             iterations = self.epochs*len(train_dataloader)
             self.scheduler = SlantedDiscriminativeLR(self.optimizer, iterations, learning_rate)
             
             # Print the current learning rate
             current_lr = self.optimizer.param_groups[0]['lr']
             # check learning rates (write in 'learning_rates' in output_folder)
-            write_results(str(current_lr) + '\n', "learning_rates")
+            write_results(str(current_lr) +'\n', "learning_rates")
         # default
         else:
+            # optimizer: Adam
+            self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
+
             self.scheduler = StepLR(self.optimizer, step_size=5, gamma=0.1)
 
         # loss treats every output as an own random variable
@@ -162,6 +168,23 @@ class TrainBERT:
         self.train_res = "training_results"
         self.test_res = "testing_results"
         self.validate = validate
+
+    def get_model_params(self):
+        # extract layers
+        layer_names = []
+        parameters = []
+
+        for idx, (name,module) in enumerate(self.model.named_parameters()):
+            if module != self.model:
+                layer_names.append(name)
+
+        # reverse, to have deepest layer at the front
+        layer_names.reverse()
+
+        for idx, name in enumerate(layer_names):
+            parameters += [{'params': [p for n, p in self.model.named_parameters() if p.requires_grad and n == name], 'lr': 0}]
+            
+        return parameters
 
     def run(self):
         auc_list = []
