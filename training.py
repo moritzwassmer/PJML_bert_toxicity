@@ -127,8 +127,11 @@ class TrainBERT:
         self.epochs = epochs
         self.training_data = train_dataloader
         self.testing_data = test_dataloader
+
         self.bar = None
         self.metrics = None
+        # scheduler mode
+        self.mode = scheduler 
         # model to device
         self.model.to(DEVICE)
 
@@ -136,7 +139,7 @@ class TrainBERT:
         self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
 
         # learning rate scheduler
-        if scheduler == 'bert_slanted':
+        if self.mode == 'bert_discr_lr':
             iterations = self.epochs*len(train_dataloader)
             self.scheduler = SlantedDiscriminativeLR(self.optimizer, iterations)
         # default
@@ -169,7 +172,7 @@ class TrainBERT:
 
         # run training, testing
         else:
-            self.bar = tqdm(position=0, total=len(self.training_data.dataset))
+            self.bar = tqdm(position=0, total=len(self.training_data.dataset), leave=False)
             for epoch in range(self.epochs):
                 # training case
                 self.bar.set_description(f"Training epoch {epoch+1}")
@@ -252,9 +255,17 @@ class TrainBERT:
 
             all_labels = torch.cat((all_labels, labels.detach()))
             all_predictions = torch.cat((all_predictions, preds.detach()))
+            
+            # update slanted triangular leraning rate scheduler after every batch
+            if self.mode == 'bert_discr_lr':
+                self.scheduler.step()
+                # Print the current learning rate
+                current_lr = self.optimizer.param_groups[0]['lr']
+                print(f'Current Learning Rate: {current_lr}')
 
-        # update learning rate scheduler
-        self.scheduler.step()
+        # update normal learning rate scheduler
+        if self.mode == 'bert_base':
+            self.scheduler.step()
         """
         # calculate metrics
         self.metrics = {
