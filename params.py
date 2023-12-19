@@ -46,7 +46,6 @@ TOXIC = r"/home/space/datasets/toxic_comment/" # cluster path
 OUTPUT = "output_folder" # output folder
 
 # RUN SPECIFIC
-
 TRAIN_LENGTH = 159571  # length of training set
 TRAIN_TOTAL = 159571 # length of total training set
 TEST_LENGTH = 63978  # length of test set
@@ -58,33 +57,14 @@ EPOCHS = 10
 LEARNING_RATE = 0.00001
 THRESHOLD = 0.5
 # see paper p. 13 f.
-"""
 HYPER_PARAMS = {
     'batch_size': [16,32],
     'learning_rate': [2e-5, 1e-5, 5e-6],
     'epochs': 4
 }
-"""
-HYPER_PARAMS = {
-    'batch_size': [32],
-    'learning_rate': [5e-6],
-    'epochs': 1
-}
-
 ORDER_LABELS = ['toxic', 'severe_toxic',
                 'obscene', 'threat', 'insult', 'identity_hate']
-"""
-# original balancing
-CLASS_WEIGHTS = {
- 'toxic': (TRAIN_TOTAL/15294),
- 'severe_toxic':  (TRAIN_TOTAL/1595),
- 'obscene':  (TRAIN_TOTAL/8449),
- 'threat':  (TRAIN_TOTAL/478),
- 'insult':  (TRAIN_TOTAL/7877),
- 'identity_hate':  (TRAIN_TOTAL/1405)
-}
 
-"""
 # weight_for_class_i = total_samples / (num_samples_in_class_i * num_classes)
 CLASS_WEIGHTS = {
  'toxic': (TRAIN_TOTAL/(15294*NUM_CLASSES)),
@@ -94,10 +74,7 @@ CLASS_WEIGHTS = {
  'insult': TRAIN_TOTAL/(7877*NUM_CLASSES),
  'identity_hate':  TRAIN_TOTAL/(1405*NUM_CLASSES)
 }
-
-
 WEIGHTS_LIST = [CLASS_WEIGHTS[key] for key in ORDER_LABELS]
-
 
 # MODEL OR TOKENIZER SPECIFIC
 TOKENIZER = BertTokenizer.from_pretrained("bert-base-uncased")
