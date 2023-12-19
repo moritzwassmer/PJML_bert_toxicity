@@ -261,7 +261,8 @@ class TrainBERT:
                 self.scheduler.step()
                 # Print the current learning rate
                 current_lr = self.optimizer.param_groups[0]['lr']
-                print(f'Current Learning Rate: {current_lr}')
+                # check learning rates (write in 'learning_rates' in output_folder)
+                write_results(current_lr, "learning_rates")
 
         # update normal learning rate scheduler
         if self.mode == 'bert_base':
