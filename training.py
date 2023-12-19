@@ -64,26 +64,27 @@ def calc_metrics(labels, predictions, avg_loss, len_dataset, epoch=0):
     return metrics
 
 class SlantedDiscriminativeLR(torch.optim.lr_scheduler._LRScheduler):
-    def __init__(self, optimizer, iterations, ratio=32, lambda_max=0.01, cut_frac=0.1, last_epoch=-1, decay=2.6):
-        self.lambda_max = lambda_max
+    def __init__(self, optimizer, iterations, start_lr, ratio=32, eta_max=0.01, cut_frac=0.1, last_epoch=-1, decay=2.6):
+        self.eta_max = eta_max
         self.cut = iterations * cut_frac
         self.cut_frac = cut_frac
         self.iterations = iterations
         self.ratio = ratio
         self.decay = decay
-        print(self.cut)
+        self.start_lr = start_lr
+        self.t = last_epoch
         super().__init__(optimizer, last_epoch)
     
     def get_lr(self):
         p = 0
-        t = self.last_epoch % self.iterations
-        if t < self.cut:
-            p = t/self.cut
+        self.t += 1
+        if self.t < self.cut:
+            learning_rate = (self.eta_max -self.start_lr)/self.cut*self.t + self.start_lr
         else:
-            p = 1-((t-self.cut)/(self.cut*(1/(self.cut_frac-1))))
-        learning_rate = self.lambda_max * ((1+p*(self.ratio -1))/self.ratio) 
+            p = 1 - ((self.t - self.cut) / (self.cut * (1 / self.cut_frac - 1)))
+            learning_rate = self.eta_max * ((1 + p * (self.ratio - 1)) / self.ratio) 
         # apply discriminative layer rate layer-wise
-        return [learning_rate/(self.decay**i) for i in range(len(self.optimizer.param_groups))]
+        return [learning_rate / (self.decay**i) for i in range(len(self.optimizer.param_groups))]
 
 
 class TrainBERT:
@@ -142,7 +143,12 @@ class TrainBERT:
         # learning rate scheduler
         if self.mode == 'bert_discr_lr':
             iterations = self.epochs*len(train_dataloader)
-            self.scheduler = SlantedDiscriminativeLR(self.optimizer, iterations)
+            self.scheduler = SlantedDiscriminativeLR(self.optimizer, iterations, learning_rate)
+            
+            # Print the current learning rate
+            current_lr = self.optimizer.param_groups[0]['lr']
+            # check learning rates (write in 'learning_rates' in output_folder)
+            write_results(str(current_lr) + '\n', "learning_rates")
         # default
         else:
             self.scheduler = StepLR(self.optimizer, step_size=5, gamma=0.1)
