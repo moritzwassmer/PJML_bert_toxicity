@@ -50,7 +50,7 @@ TRAIN_LENGTH = 159571  # length of training set
 TRAIN_TOTAL = 159571 # length of total training set
 TEST_LENGTH = 63978  # length of test set
 VAL_LENGTH = TEST_LENGTH//2 # length of validation set
-NUM_CLASSES = 7 
+NUM_CLASSES = 6 
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 BATCH_SIZE = 32 
 EPOCHS = 10
@@ -75,6 +75,11 @@ CLASS_WEIGHTS = {
  'identity_hate':  TRAIN_TOTAL/(1405*NUM_CLASSES)
 }
 WEIGHTS_LIST = [CLASS_WEIGHTS[key] for key in ORDER_LABELS]
+# betas for Adam
+BETA_1 = 0.9
+BETA_2 = 0.999
+# decay factor for slanted triangular discriminative learning rate (Sun et al., 2020, p.6)
+DECAY = 0.95
 
 # MODEL OR TOKENIZER SPECIFIC
 TOKENIZER = BertTokenizer.from_pretrained("bert-base-uncased")

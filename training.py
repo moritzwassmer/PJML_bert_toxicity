@@ -142,7 +142,7 @@ class TrainBERT:
 
         if self.mode == 'bert_discr_lr':
             # optimizer: Adam
-            self.optimizer = optim.Adam(self.get_model_params(), lr=learning_rate)
+            self.optimizer = optim.Adam(self.get_model_params(), lr=learning_rate, betas=(BETA_1, BETA_2))
 
             # learning rate scheduler
             iterations = self.epochs*len(train_dataloader)
@@ -155,7 +155,7 @@ class TrainBERT:
         # default
         else:
             # optimizer: Adam
-            self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
+            self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate, betas=(BETA_1, BETA_2))
 
             self.scheduler = StepLR(self.optimizer, step_size=5, gamma=0.1)
 
