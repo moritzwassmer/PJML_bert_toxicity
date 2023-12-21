@@ -48,23 +48,23 @@ def calc_metrics(labels, predictions, avg_loss, len_dataset, epoch=0):
     metrics = {
         'epoch': epoch+1,
         'avg_loss': avg_loss / len_dataset,
-        'roc_auc': roc_auc_score(labels, predictions),
+        'roc_auc': roc_auc_score(labels, predictions, average='macro', multi_class='ovr'),
         'accuracy': T / total,
         'TPR': TP/P,
         'FPR': FP/(FP+TN),
         'TNR': TN/N,
         'FNR': FN/(FN+TP),
-        'toxic': roc_auc_score(np.array(labels)[:,0],np.array(predictions)[:,0]), 
-        'severe_toxic': roc_auc_score(np.array(labels)[:,1],np.array(predictions)[:,1]), 
-        'obscene': roc_auc_score(np.array(labels)[:,2],np.array(predictions)[:,2]),  
-        'threat': roc_auc_score(np.array(labels)[:,3],np.array(predictions)[:,3]), 
-        'insult': roc_auc_score(np.array(labels)[:,4],np.array(predictions)[:,4]),  
-        'identity_hate': roc_auc_score(np.array(labels)[:,5],np.array(predictions)[:,5]) 
+        'toxic': roc_auc_score(np.array(labels)[:,0],np.array(predictions)[:,0], average='macro', multi_class='ovr'), 
+        'severe_toxic': roc_auc_score(np.array(labels)[:,1],np.array(predictions)[:,1], average='macro', multi_class='ovr'), 
+        'obscene': roc_auc_score(np.array(labels)[:,2],np.array(predictions)[:,2], average='macro', multi_class='ovr'),  
+        'threat': roc_auc_score(np.array(labels)[:,3],np.array(predictions)[:,3], average='macro', multi_class='ovr'), 
+        'insult': roc_auc_score(np.array(labels)[:,4],np.array(predictions)[:,4], average='macro', multi_class='ovr'),  
+        'identity_hate': roc_auc_score(np.array(labels)[:,5],np.array(predictions)[:,5], average='macro', multi_class='ovr') 
     }
     return metrics
 
 class SlantedDiscriminativeLR(torch.optim.lr_scheduler._LRScheduler):
-    def __init__(self, optimizer, iterations, start_lr, ratio=32, eta_max=0.01, cut_frac=0.1, last_epoch=-1, decay=2.6):
+    def __init__(self, optimizer, iterations, start_lr, ratio=32, eta_max=0.01, cut_frac=0.1, last_epoch=-1, decay=DECAY):
         self.eta_max = eta_max
         self.cut = iterations * cut_frac
         self.cut_frac = cut_frac
@@ -84,11 +84,11 @@ class SlantedDiscriminativeLR(torch.optim.lr_scheduler._LRScheduler):
             p = 1 - ((self.t - self.cut) / (self.cut * (1 / self.cut_frac - 1)))
             learning_rate = self.eta_max * ((1 + p * (self.ratio - 1)) / self.ratio) 
         # apply discriminative layer rate layer-wise
-        decay_lrs = [learning_rate / (self.decay**i) for i in range(len(self.optimizer.param_groups))]
+        decay_lrs = [learning_rate * (self.decay**i) for i in range(len(self.optimizer.param_groups))]
         for param_group, decay_lr in zip(self.optimizer.param_groups, decay_lrs):
             param_group['lr'] = decay_lr
+            #print(param_group['lr'])
         return decay_lrs
-
 
 class TrainBERT:
     """
@@ -142,16 +142,20 @@ class TrainBERT:
 
         if self.mode == 'bert_discr_lr':
             # optimizer: Adam
-            self.optimizer = optim.Adam(self.get_model_params(), lr=learning_rate, betas=(BETA_1, BETA_2))
+            self.optimizer = optim.Adam(self.create_param_groups(), lr=learning_rate, betas=(BETA_1, BETA_2))
+
+            # check number of parameter groups
+            #num_param_groups = len(self.optimizer.param_groups)
+            #print(f"Anzahl der Parametergruppen: {num_param_groups}")
 
             # learning rate scheduler
             iterations = self.epochs*len(train_dataloader)
             self.scheduler = SlantedDiscriminativeLR(self.optimizer, iterations, learning_rate)
             
             # Print the current learning rate
-            current_lr = self.optimizer.param_groups[0]['lr']
+            # current_lr = self.optimizer.param_groups[0]['lr']
             # check learning rates (write in 'learning_rates' in output_folder)
-            write_results(str(current_lr) +'\n', "learning_rates")
+            # write_results(str(current_lr) +'\n', "learning_rates")
         # default
         else:
             # optimizer: Adam
@@ -169,22 +173,32 @@ class TrainBERT:
         self.test_res = "testing_results"
         self.validate = validate
 
-    def get_model_params(self):
+    def create_param_groups(self):
+        toxic_comment = []
+        encoders = [[] for _ in range(12)]
+        embedding =[]
+
         # extract layers
-        layer_names = []
-        parameters = []
+        for idx, (name,module) in enumerate(self.model.named_parameters()): 
+            parts = name.split('.')
+            # group layers
+            if parts[0] == 'toxic_comment':
+                # group parameters in list
+                toxic_comment.append(module)
+                #group encoders
+            elif len(parts) > 3 and parts[3].isdigit(): 
+                encoder_num = int(parts[3])
+                encoders[encoder_num].append(module)
+            elif parts[1] == 'embedding':
+                embedding.append(module)
 
-        for idx, (name,module) in enumerate(self.model.named_parameters()):
-            if module != self.model:
-                layer_names.append(name)
-
-        # reverse, to have deepest layer at the front
-        layer_names.reverse()
-
-        for idx, name in enumerate(layer_names):
-            parameters += [{'params': [p for n, p in self.model.named_parameters() if p.requires_grad and n == name], 'lr': 0}]
-            
-        return parameters
+        param_groups = [
+            {'params': toxic_comment, 'lr': 0},
+            *[{'params': encoder, 'lr': 0} for encoder in encoders[::-1]],
+            {'params': embedding, 'lr': 0}
+        ]
+        #print(param_groups)
+        return param_groups
 
     def run(self):
         auc_list = []
@@ -232,13 +246,6 @@ class TrainBERT:
         Args:
             epoch (int): Current epoch of training
         """
-        """
-        # init stats
-        T, TN, TP, FP, FN, P, N = 0, 0, 0, 0, 0, 0, 0
-        total = 0
-        """
-        #all_labels = []
-        #all_predictions = []
         avg_loss = 0.0
         all_labels = torch.tensor([], device=DEVICE)
         all_predictions = torch.tensor([], device=DEVICE)
@@ -262,26 +269,6 @@ class TrainBERT:
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
-            """ 
-            # COMPUTE METRICS
-            sigmoid = torch.nn.Sigmoid()
-            preds = sigmoid(preds)
-            preds_th = torch.ge(preds, THRESHOLD).int()
-
-            T += (preds_th == labels).sum().item()
-            TP += ((preds_th == 1) & (labels == 1)).sum().item()
-            FP += ((preds_th == 1) & (labels == 0)).sum().item()
-            TN += ((preds_th == 0) & (labels == 0)).sum().item()
-            FN += ((preds_th == 0) & (labels == 1)).sum().item()
-            P += (labels == 1).sum().item()
-            N += (labels == 0).sum().item()
-            # sump up total number of labels in batch
-            total += labels.nelement()
-            """
-
-            # labels and predictions for AUC
-            #all_labels.extend(labels.cpu().detach().numpy()) 
-            #all_predictions.extend(preds.cpu().detach().numpy()) 
 
             all_labels = torch.cat((all_labels, labels.detach()))
             all_predictions = torch.cat((all_predictions, preds.detach()))
@@ -290,26 +277,14 @@ class TrainBERT:
             if self.mode == 'bert_discr_lr':
                 self.scheduler.step()
                 # Print the current learning rate
-                current_lr = self.optimizer.param_groups[0]['lr']
+                # current_lr = self.optimizer.param_groups[0]['lr']
                 # check learning rates (write in 'learning_rates' in output_folder)
-                write_results(str(current_lr) + '\n', "learning_rates")
+                # write_results(str(current_lr) + '\n', "learning_rates")
 
         # update normal learning rate scheduler
         if self.mode == 'bert_base':
             self.scheduler.step()
-        """
-        # calculate metrics
-        self.metrics = {
-            'epoch': epoch+1,
-            'avg_loss': avg_loss / len(self.training_data),
-            'roc_auc': roc_auc_score(all_labels, all_predictions),
-            'accuracy': T / total,
-            'TPR': TP/P,
-            'FPR': FP/(FP+TN),
-            'TNR': TN/N,
-            'FNR': FN/(FN+TP)
-        }
-        """
+
         self.metrics = calc_metrics(all_labels, all_predictions, avg_loss, len(self.training_data), epoch)
 
         # print metrics
@@ -330,13 +305,6 @@ class TrainBERT:
         # model to evaluation mode
         self.model.eval()
 
-        """
-        # init stats
-        T, TN, TP, FP, FN, P, N = 0, 0, 0, 0, 0, 0, 0
-        total = 0
-        """
-        #all_labels = []
-        #all_predictions = []
         avg_loss = 0.0
         all_labels = torch.tensor([], device=DEVICE)
         all_predictions = torch.tensor([], device=DEVICE)
@@ -366,40 +334,6 @@ class TrainBERT:
                 all_labels = torch.cat((all_labels, labels.detach()))
                 all_predictions = torch.cat((all_predictions, preds.detach()))
 
-            """
-                # COMPUTE METRICS
-                sigmoid = torch.nn.Sigmoid()
-                preds = sigmoid(preds)
-                preds_th = torch.ge(preds, THRESHOLD).int()
-
-                T += (preds_th == labels).sum().item()
-                TP += ((preds_th == 1) & (labels == 1)).sum().item()
-                FP += ((preds_th == 1) & (labels == 0)).sum().item()
-                TN += ((preds_th == 0) & (labels == 0)).sum().item()
-                FN += ((preds_th == 0) & (labels == 1)).sum().item()
-                P += (labels == 1).sum().item()
-                N += (labels == 0).sum().item()
-                # sump up total number of labels in batch
-                total += labels.nelement()
-            
-            # calculate metrics
-            self.metrics = {
-                'epoch': epoch+1,
-                'avg_loss': avg_loss / len(self.testing_data),
-                'roc_auc': roc_auc_score(all_labels, all_predictions),
-                'accuracy': T / total,
-                'TPR': TP/P,
-                'FPR': FP/(FP+TN),
-                'TNR': TN/N,
-                'FNR': FN/(FN+TP),
-                'toxic': roc_auc_score(np.array(all_labels)[:,0],np.array(all_predictions)[:,0]), 
-                'severe_toxic': roc_auc_score(np.array(all_labels)[:,1],np.array(all_predictions)[:,1]), 
-                'obscene': roc_auc_score(np.array(all_labels)[:,2],np.array(all_predictions)[:,2]),  
-                'threat': roc_auc_score(np.array(all_labels)[:,3],np.array(all_predictions)[:,3]), 
-                'insult': roc_auc_score(np.array(all_labels)[:,4],np.array(all_predictions)[:,4]),  
-                'identity_hate': roc_auc_score(np.array(all_labels)[:,5],np.array(all_predictions)[:,5]) 
-            }
-            """
             self.metrics = calc_metrics(all_labels, all_predictions, avg_loss, len(self.testing_data), epoch)
 
         if not self.validate:
@@ -417,3 +351,5 @@ class TrainBERT:
             return self.metrics['roc_auc']
         else:
             return all_labels, all_predictions, avg_loss, len(self.testing_data)
+
+
