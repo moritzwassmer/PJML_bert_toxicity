@@ -46,20 +46,24 @@ TOXIC = r"/home/space/datasets/toxic_comment/" # cluster path
 OUTPUT = "output_folder" # output folder
 
 # RUN SPECIFIC
-TRAIN_LENGTH = 159571  # length of training set
+METHOD = 'bert_slanted_lr' # 'bert_base', 'bert_discr_lr', 'bert_slanted_lr'
+TRAIN_LENGTH =159571  # length of training set
 TRAIN_TOTAL = 159571 # length of total training set
-TEST_LENGTH = 63978  # length of test set
+TEST_LENGTH =63978  # length of test set
 VAL_LENGTH = TEST_LENGTH//2 # length of validation set
 NUM_CLASSES = 6 
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+# default hyperparameters (not in use)
 BATCH_SIZE = 32 
 EPOCHS = 10
 LEARNING_RATE = 0.00001
+
 THRESHOLD = 0.5
-# see paper p. 13 f.
+# see paper p. 13 f. (changed)
 HYPER_PARAMS = {
     'batch_size': [16,32],
-    'learning_rate': [2e-5, 1e-5, 5e-6],
+    'learning_rate': [1e-5, 5e-6, 1e-6], 
     'epochs': 4
 }
 ORDER_LABELS = ['toxic', 'severe_toxic',
@@ -75,9 +79,9 @@ CLASS_WEIGHTS = {
  'identity_hate':  TRAIN_TOTAL/(1405*NUM_CLASSES)
 }
 WEIGHTS_LIST = [CLASS_WEIGHTS[key] for key in ORDER_LABELS]
-# betas for Adam
-BETA_1 = 0.9
-BETA_2 = 0.999
+
+# maximum lr for slanted triangular discriminative learning rate
+ETA_MAX = 0.01
 # decay factor for slanted triangular discriminative learning rate (Sun et al., 2020, p.6)
 DECAY = 0.95
 

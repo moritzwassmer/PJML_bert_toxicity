@@ -9,6 +9,7 @@ from tqdm import tqdm
 
 from params import *
 
+
 def write_results(output, file):
     """
     Helper function that writes the output of the training/testing loop into a .txt file in the output_folder.
@@ -21,6 +22,7 @@ def write_results(output, file):
 
     with open(os.path.join(OUTPUT, f'{file}.txt'), "a") as file:
         file.write(output)
+
 
 def calc_metrics(labels, predictions, avg_loss, len_dataset, epoch=0):
     T, TN, TP, FP, FN, P, N = 0, 0, 0, 0, 0, 0, 0
@@ -44,7 +46,6 @@ def calc_metrics(labels, predictions, avg_loss, len_dataset, epoch=0):
     labels = labels.cpu().numpy()
     predictions = predictions.cpu().numpy()
 
-    
     metrics = {
         'epoch': epoch+1,
         'avg_loss': avg_loss / len_dataset,
@@ -54,17 +55,34 @@ def calc_metrics(labels, predictions, avg_loss, len_dataset, epoch=0):
         'FPR': FP/(FP+TN),
         'TNR': TN/N,
         'FNR': FN/(FN+TP),
-        'toxic': roc_auc_score(np.array(labels)[:,0],np.array(predictions)[:,0], average='macro', multi_class='ovr'), 
-        'severe_toxic': roc_auc_score(np.array(labels)[:,1],np.array(predictions)[:,1], average='macro', multi_class='ovr'), 
-        'obscene': roc_auc_score(np.array(labels)[:,2],np.array(predictions)[:,2], average='macro', multi_class='ovr'),  
-        'threat': roc_auc_score(np.array(labels)[:,3],np.array(predictions)[:,3], average='macro', multi_class='ovr'), 
-        'insult': roc_auc_score(np.array(labels)[:,4],np.array(predictions)[:,4], average='macro', multi_class='ovr'),  
-        'identity_hate': roc_auc_score(np.array(labels)[:,5],np.array(predictions)[:,5], average='macro', multi_class='ovr') 
+        'toxic': roc_auc_score(np.array(labels)[:, 0], np.array(predictions)[:, 0], average='macro', multi_class='ovr'),
+        'severe_toxic': roc_auc_score(np.array(labels)[:, 1], np.array(predictions)[:, 1], average='macro', multi_class='ovr'),
+        'obscene': roc_auc_score(np.array(labels)[:, 2], np.array(predictions)[:, 2], average='macro', multi_class='ovr'),
+        'threat': roc_auc_score(np.array(labels)[:, 3], np.array(predictions)[:, 3], average='macro', multi_class='ovr'),
+        'insult': roc_auc_score(np.array(labels)[:, 4], np.array(predictions)[:, 4], average='macro', multi_class='ovr'),
+        'identity_hate': roc_auc_score(np.array(labels)[:, 5], np.array(predictions)[:, 5], average='macro', multi_class='ovr')
     }
     return metrics
 
-class SlantedDiscriminativeLR(torch.optim.lr_scheduler._LRScheduler):
-    def __init__(self, optimizer, iterations, start_lr, ratio=32, eta_max=0.01, cut_frac=0.1, last_epoch=-1, decay=DECAY):
+
+class DiscriminativeLRScheduler(torch.optim.lr_scheduler._LRScheduler):
+    def __init__(self, optimizer, start_lr, last_epoch=-1, decay=DECAY):
+        self.decay = decay
+        self.start_lr = start_lr
+        super().__init__(optimizer, last_epoch)
+
+    def get_lr(self):
+        learning_rate = self.start_lr
+        # apply discriminative layer rate layer-wise
+        decay_lrs = [learning_rate * (self.decay**i)
+                     for i in range(len(self.optimizer.param_groups))]
+        for param_group, decay_lr in zip(self.optimizer.param_groups, decay_lrs):
+            param_group['lr'] = decay_lr
+            # print(param_group['lr'])
+        return decay_lrs
+
+class SlantedLRScheduler(torch.optim.lr_scheduler._LRScheduler):
+    def __init__(self, optimizer, iterations, start_lr, ratio=32, eta_max=ETA_MAX, cut_frac=0.1, last_epoch=-1, decay=DECAY):
         self.eta_max = eta_max
         self.cut = iterations * cut_frac
         self.cut_frac = cut_frac
@@ -74,21 +92,27 @@ class SlantedDiscriminativeLR(torch.optim.lr_scheduler._LRScheduler):
         self.start_lr = start_lr
         self.t = last_epoch
         super().__init__(optimizer, last_epoch)
-    
+
     def get_lr(self):
         p = 0
         self.t += 1
         if self.t < self.cut:
-            learning_rate = (self.eta_max -self.start_lr)/self.cut*self.t + self.start_lr
+            learning_rate = (self.eta_max - self.start_lr) / \
+                self.cut*self.t + self.start_lr
         else:
-            p = 1 - ((self.t - self.cut) / (self.cut * (1 / self.cut_frac - 1)))
-            learning_rate = self.eta_max * ((1 + p * (self.ratio - 1)) / self.ratio) 
+            p = 1 - ((self.t - self.cut) /
+                     (self.cut * (1 / self.cut_frac - 1)))
+            learning_rate = self.eta_max * \
+                ((1 + p * (self.ratio - 1)) / self.ratio)
+        learning_rate = self.start_lr
         # apply discriminative layer rate layer-wise
-        decay_lrs = [learning_rate * (self.decay**i) for i in range(len(self.optimizer.param_groups))]
+        decay_lrs = [learning_rate * (self.decay**i)
+                     for i in range(len(self.optimizer.param_groups))]
         for param_group, decay_lr in zip(self.optimizer.param_groups, decay_lrs):
             param_group['lr'] = decay_lr
-            #print(param_group['lr'])
+            # print(param_group['lr'])
         return decay_lrs
+
 
 class TrainBERT:
     """
@@ -136,57 +160,94 @@ class TrainBERT:
         self.bar = None
         self.metrics = None
         # scheduler mode
-        self.mode = scheduler 
+        self.mode = scheduler
         # model to device
         self.model.to(DEVICE)
 
         if self.mode == 'bert_discr_lr':
+            self.train_res = "training_bert_discr_lr"
+            self.test_res = "testing_bert_discr_lr"
+
             # optimizer: Adam
-            self.optimizer = optim.Adam(self.create_param_groups(), lr=learning_rate, betas=(BETA_1, BETA_2))
+            self.optimizer = optim.Adam(
+                self.create_param_groups(), lr=learning_rate)
 
             # check number of parameter groups
-            #num_param_groups = len(self.optimizer.param_groups)
-            #print(f"Anzahl der Parametergruppen: {num_param_groups}")
+            # num_param_groups = len(self.optimizer.param_groups)
+            # print(f"Anzahl der Parametergruppen: {num_param_groups}")
 
             # learning rate scheduler
             iterations = self.epochs*len(train_dataloader)
-            self.scheduler = SlantedDiscriminativeLR(self.optimizer, iterations, learning_rate)
-            
+            self.scheduler = DiscriminativeLRScheduler(
+                self.optimizer, iterations, learning_rate)
+
             # Print the current learning rate
             # current_lr = self.optimizer.param_groups[0]['lr']
             # check learning rates (write in 'learning_rates' in output_folder)
             # write_results(str(current_lr) +'\n', "learning_rates")
+            self.criterion = nn.BCEWithLogitsLoss(
+                reduction="mean",
+                pos_weight=torch.Tensor(WEIGHTS_LIST).to(DEVICE)
+            )
+
+        elif self.mode == 'bert_slanted_lr':
+            self.train_res = "training_bert_slanted_lr"
+            self.test_res = "testing_bert_slanted_lr"
+
+            # optimizer: Adam
+            self.optimizer = optim.Adam(
+                self.create_param_groups(), lr=learning_rate)
+
+            # check number of parameter groups
+            # num_param_groups = len(self.optimizer.param_groups)
+            # print(f"Anzahl der Parametergruppen: {num_param_groups}")
+
+            # learning rate scheduler
+            iterations = self.epochs*len(train_dataloader)
+            self.scheduler = SlantedLRScheduler(
+                self.optimizer, iterations, learning_rate)
+
+            # Print the current learning rate
+            # current_lr = self.optimizer.param_groups[0]['lr']
+            # check learning rates (write in 'learning_rates' in output_folder)
+            # write_results(str(current_lr) +'\n', "learning_rates")
+            self.criterion = nn.BCEWithLogitsLoss(
+                reduction="mean",
+                pos_weight=torch.Tensor(WEIGHTS_LIST).to(DEVICE)
+            )
+
         # default
         else:
+            self.train_res = "training_bert_base"
+            self.test_res = "testing_bert_base"
             # optimizer: Adam
-            self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate, betas=(BETA_1, BETA_2))
+            self.optimizer = optim.Adam(
+                self.model.parameters(), lr=learning_rate)
 
             self.scheduler = StepLR(self.optimizer, step_size=5, gamma=0.1)
 
-        # loss treats every output as an own random variable
-        self.criterion = nn.BCEWithLogitsLoss(
-            reduction="mean",
-            pos_weight=torch.Tensor(WEIGHTS_LIST).to(DEVICE)
-        )
+            # loss function
+            self.criterion = nn.BCEWithLogitsLoss(
+                reduction="mean",
+                pos_weight=torch.Tensor(WEIGHTS_LIST).to(DEVICE)
+            )
         self.info = info
-        self.train_res = "training_results"
-        self.test_res = "testing_results"
         self.validate = validate
 
     def create_param_groups(self):
         toxic_comment = []
         encoders = [[] for _ in range(12)]
-        embedding =[]
+        embedding = []
 
         # extract layers
-        for idx, (name,module) in enumerate(self.model.named_parameters()): 
+        for idx, (name, module) in enumerate(self.model.named_parameters()):
             parts = name.split('.')
             # group layers
             if parts[0] == 'toxic_comment':
                 # group parameters in list
                 toxic_comment.append(module)
-                #group encoders
-            elif len(parts) > 3 and parts[3].isdigit(): 
+                # group encoders
+            elif len(parts) > 3 and parts[3].isdigit():
                 encoder_num = int(parts[3])
                 encoders[encoder_num].append(module)
             elif parts[1] == 'embedding':
@@ -197,7 +258,7 @@ class TrainBERT:
             *[{'params': encoder, 'lr': 0} for encoder in encoders[::-1]],
             {'params': embedding, 'lr': 0}
         ]
-        #print(param_groups)
+        # print(param_groups)
         return param_groups
 
     def run(self):
@@ -207,16 +268,18 @@ class TrainBERT:
         write_results(self.info, self.test_res)
 
         if self.validate:
-            self.bar = tqdm(position=0, total=len(self.testing_data.dataset), desc="Validation")
-            
-            labels, predictions, avg_loss, len_data  = self.testing(self.epochs)
+            self.bar = tqdm(position=0, total=len(
+                self.testing_data.dataset), desc="Validation")
+
+            labels, predictions, avg_loss, len_data = self.testing(self.epochs)
 
             self.bar.close()
             return labels, predictions, avg_loss, len_data
 
         # run training, testing
         else:
-            self.bar = tqdm(position=0, total=len(self.training_data.dataset), leave=False)
+            self.bar = tqdm(position=0, total=len(
+                self.training_data.dataset), leave=False)
             for epoch in range(self.epochs):
                 # training case
                 self.bar.set_description(f"Training epoch {epoch+1}")
@@ -234,7 +297,6 @@ class TrainBERT:
                 # test case
                 self.bar.set_description(f"Testing epoch {epoch+1}")
                 self.bar.total = len(self.testing_data.dataset)
-
                 auc_list.append(self.testing(epoch))
             self.bar.close()
         return auc_list
@@ -272,7 +334,7 @@ class TrainBERT:
 
             all_labels = torch.cat((all_labels, labels.detach()))
             all_predictions = torch.cat((all_predictions, preds.detach()))
-            
+
             # update slanted triangular leraning rate scheduler after every batch
             if self.mode == 'bert_discr_lr':
                 self.scheduler.step()
@@ -285,7 +347,8 @@ class TrainBERT:
         if self.mode == 'bert_base':
             self.scheduler.step()
 
-        self.metrics = calc_metrics(all_labels, all_predictions, avg_loss, len(self.training_data), epoch)
+        self.metrics = calc_metrics(
+            all_labels, all_predictions, avg_loss, len(self.training_data), epoch)
 
         # print metrics
         message = f"\nTraining epoch {self.metrics['epoch']}\nAvg. training loss: {self.metrics['avg_loss']:.2f}, ROC-AUC: {self.metrics['roc_auc']:.2f}, Accuracy: {self.metrics['accuracy']:.2f}, TPR: {self.metrics['TPR']:.2f}, TNR: {self.metrics['TNR']:.2f}\n"
@@ -328,17 +391,19 @@ class TrainBERT:
 
                 avg_loss += loss.item()
 
-                #all_labels.extend(labels.cpu().detach().numpy()) # TODO move to GPU
-                #all_predictions.extend(preds.cpu().detach().numpy()) # TODO move to GPU
+                # all_labels.extend(labels.cpu().detach().numpy()) # TODO move to GPU
+                # all_predictions.extend(preds.cpu().detach().numpy()) # TODO move to GPU
 
                 all_labels = torch.cat((all_labels, labels.detach()))
                 all_predictions = torch.cat((all_predictions, preds.detach()))
 
-            self.metrics = calc_metrics(all_labels, all_predictions, avg_loss, len(self.testing_data), epoch)
+            self.metrics = calc_metrics(
+                all_labels, all_predictions, avg_loss, len(self.testing_data), epoch)
 
         if not self.validate:
             message = f"\nTesting epoch {self.metrics['epoch']}\nAvg. testing loss: {self.metrics['avg_loss']:.2f}, avg. ROC-AUC: {self.metrics['roc_auc']:.2f}, Accuracy: {self.metrics['accuracy']:.2f}, TPR: {self.metrics['TPR']:.2f}, FPR: {self.metrics['FPR']:.2f}, TNR: {self.metrics['TNR']:.2f}, FNR: {self.metrics['FNR']:.2f}\n"
-            auc_classes = '\n'.join([f'ROC-AUC for {label}: {self.metrics[label]:.2f}'for label in ORDER_LABELS])
+            auc_classes = '\n'.join(
+                [f'ROC-AUC for {label}: {self.metrics[label]:.2f}'for label in ORDER_LABELS])
             message = message + auc_classes + '\n'
             print(message)
 
@@ -347,9 +412,7 @@ class TrainBERT:
 
             # Set the model back to training mode
             self.model.train()
-            
+
             return self.metrics['roc_auc']
         else:
             return all_labels, all_predictions, avg_loss, len(self.testing_data)
-
-
