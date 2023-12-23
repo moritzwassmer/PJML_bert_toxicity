@@ -76,12 +76,12 @@ HYPER_PARAMS = {
 ORDER_LABELS = ['toxic', 'severe_toxic',
                 'obscene', 'threat', 'insult', 'identity_hate']
 CLASS_WEIGHTS = {
-    'toxic': TRAIN_TOTAL/(15294*NUM_CLASSES**2),
-    'severe_toxic': TRAIN_TOTAL/(1595*NUM_CLASSES**2),
-    'obscene':  TRAIN_TOTAL/(8449*NUM_CLASSES**2),
-    'threat':  TRAIN_TOTAL/(478*NUM_CLASSES**2),
-    'insult': TRAIN_TOTAL/(7877*NUM_CLASSES**2),
-    'identity_hate':  TRAIN_TOTAL/(1405*NUM_CLASSES**2)
+    'toxic': TRAIN_TOTAL/(15294*NUM_CLASSES),
+    'severe_toxic': TRAIN_TOTAL/(1595*NUM_CLASSES),
+    'obscene':  TRAIN_TOTAL/(8449*NUM_CLASSES),
+    'threat':  TRAIN_TOTAL/(478*NUM_CLASSES),
+    'insult': TRAIN_TOTAL/(7877*NUM_CLASSES),
+    'identity_hate':  TRAIN_TOTAL/(1405*NUM_CLASSES)
 }
 WEIGHTS_LIST = [CLASS_WEIGHTS[key] for key in ORDER_LABELS]
 ETA_MAX = 0.01
