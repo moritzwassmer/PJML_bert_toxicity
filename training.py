@@ -141,7 +141,7 @@ class TrainBERT:
 
     """
 
-    def __init__(self, model, scheduler=None, train_dataloader=None, test_dataloader=None, epochs=EPOCHS, learning_rate=LEARNING_RATE, validate=False, info=None):
+    def __init__(self, model, method='bert_base', train_dataloader=None, test_dataloader=None, epochs=EPOCHS, learning_rate=LEARNING_RATE, validate=False, info=None):
         """
         Initializes a training and a testing processes.
 
@@ -159,14 +159,14 @@ class TrainBERT:
 
         self.bar = None
         self.metrics = None
-        # scheduler mode
-        self.mode = scheduler
+        # scheduler method
+        self.method = method
         # model to device
         self.model.to(DEVICE)
 
-        if self.mode == 'bert_discr_lr':
-            self.train_res = "training_bert_discr_lr"
-            self.test_res = "testing_bert_discr_lr"
+        if self.method == 'bert_discr_lr':
+            self.train_res = DISCR_TRAIN
+            self.test_res = DISCR_TEST
 
             # optimizer: Adam
             self.optimizer = optim.Adam(
@@ -190,9 +190,9 @@ class TrainBERT:
                 pos_weight=torch.Tensor(WEIGHTS_LIST).to(DEVICE)
             )
 
-        elif self.mode == 'bert_slanted_lr':
-            self.train_res = "training_bert_slanted_lr"
-            self.test_res = "testing_bert_slanted_lr"
+        elif self.method == 'bert_slanted_lr':
+            self.train_res = SLANTED_TRAIN
+            self.test_res = SLANTED_TEST
 
             # optimizer: Adam
             self.optimizer = optim.Adam(
@@ -218,12 +218,12 @@ class TrainBERT:
 
         # default
         else:
-            self.train_res = "training_bert_base"
-            self.test_res = "testing_bert_base"
+            self.train_res = BASE_TRAIN
+            self.test_res = BASE_TEST
             # optimizer: Adam
             self.optimizer = optim.Adam(
                 self.model.parameters(), lr=learning_rate)
-
+            # lr scheduler
             self.scheduler = StepLR(self.optimizer, step_size=5, gamma=0.1)
 
             # loss function
@@ -335,8 +335,8 @@ class TrainBERT:
             all_labels = torch.cat((all_labels, labels.detach()))
             all_predictions = torch.cat((all_predictions, preds.detach()))
 
-            # update slanted triangular leraning rate scheduler after every batch
-            if self.mode == 'bert_discr_lr':
+            # update slanted triangular learning rate scheduler after every batch
+            if self.method == 'bert_discr_lr' or self.method == 'bert_slanted_lr':
                 self.scheduler.step()
                 # Print the current learning rate
                 # current_lr = self.optimizer.param_groups[0]['lr']
@@ -344,7 +344,7 @@ class TrainBERT:
                 # write_results(str(current_lr) + '\n', "learning_rates")
 
         # update normal learning rate scheduler
-        if self.mode == 'bert_base':
+        if self.method == 'bert_base':
             self.scheduler.step()
 
         self.metrics = calc_metrics(
@@ -365,7 +365,7 @@ class TrainBERT:
             epoch (int): Current epoch of testing
         """
 
-        # model to evaluation mode
+        # model to evaluation method
         self.model.eval()
 
         avg_loss = 0.0
@@ -410,7 +410,7 @@ class TrainBERT:
             # write results
             write_results(message, self.test_res)
 
-            # Set the model back to training mode
+            # Set the model back to training method
             self.model.train()
 
             return self.metrics['roc_auc']

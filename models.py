@@ -326,29 +326,29 @@ class BERTBase(nn.Module):
             normlayer (nn.LayerNorm): Layer normalization
             dropout (torch.nn.Dropout): Dropout layer
         """
-        
+
         def __init__(self):
             """
             Initializes the BertEmbedding for token, position, and segment embeddings of the raw input.
 
             Attributes:
                 token (nn.Embedding): Token embedding
-                position (PositionEmbedding): Positional embedding
+                position (nn.Embedding): Positional embedding
                 segment (nn.Embedding): Segment embedding
                 normlayer (nn.LayerNorm): Normalization layer
                 dropout (torch.nn.Dropout): Dropout layer
             """
             super().__init__()
-            # token embedding: transforms (vocabulary size, number of tokens) into (vocabulary size, number of tokens, length of embedding vector) -> is the other tokenization obsolete (in custom_datasets.py)?
             self.token = nn.Embedding(VOCAB_SIZE, EMBED_SIZE, padding_idx=0).to(
                 DEVICE)  # padding remains 0 during training
-            self.position = nn.Embedding(SEQ_LEN, EMBED_SIZE).to(DEVICE) 
+            self.position = nn.Embedding(SEQ_LEN, EMBED_SIZE).to(DEVICE)
             self.segment = nn.Embedding(2, EMBED_SIZE, padding_idx=0)
             self.normlayer = nn.LayerNorm(EMBED_SIZE, eps=EPS)
             self.dropout = torch.nn.Dropout(p=DROPOUT)
 
             # create token position tensor
-            self.token_pos = torch.tensor([i for i in range(SEQ_LEN)]).to(DEVICE) 
+            self.token_pos = torch.tensor(
+                [i for i in range(SEQ_LEN)]).to(DEVICE)
 
         def forward(self, sequence, segments):
             """
@@ -361,7 +361,7 @@ class BERTBase(nn.Module):
             Returns:
                 torch.Tensor: Embedding 
             """
-            
+
             total_embedding = self.token(
                 sequence) + self.position(self.token_pos) + self.segment(segments)
             norm_embedding = self.normlayer(total_embedding)
@@ -392,7 +392,8 @@ class BERTBase(nn.Module):
 
         # download pretrained weights
         configuration = BertConfig.from_pretrained(BERT_BASE)
-        pretrained_model = BertModel.from_pretrained(BERT_BASE, config=configuration)
+        pretrained_model = BertModel.from_pretrained(
+            BERT_BASE, config=configuration)
 
         # load_state_dict for encoders
         for i in range(NUMBER_LAYERS):
@@ -407,9 +408,11 @@ class BERTBase(nn.Module):
         self.embedding.segment.load_state_dict(
             pretrained_model.embeddings.token_type_embeddings.state_dict(), strict=False)
         # load_state_dict for position embedding
-        self.embedding.position.load_state_dict(pretrained_model.embeddings.position_embeddings.state_dict(), strict=False)
+        self.embedding.position.load_state_dict(
+            pretrained_model.embeddings.position_embeddings.state_dict(), strict=False)
         # load_state_dict for LayerNorm
-        self.embedding.normlayer.load_state_dict(pretrained_model.embeddings.LayerNorm.state_dict(), strict=False)
+        self.embedding.normlayer.load_state_dict(
+            pretrained_model.embeddings.LayerNorm.state_dict(), strict=False)
 
     def forward(self, words):
         """

@@ -75,14 +75,14 @@ def train_apply(method="bert_base", dataset="jigsaw_toxicity_pred"):
                     
             # assign epochs and learning rate
             if method == 'bert_base':
-                trainer = training.TrainBERT(berti, train_dataloader=train_loader, test_dataloader=test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, info=info)
+                trainer = training.TrainBERT(berti,  method=method, train_dataloader=train_loader, test_dataloader=test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, info=info)
             elif method == 'bert_discr_lr':
-                trainer = training.TrainBERT(berti, scheduler=method, train_dataloader=train_loader, test_dataloader=test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, info=info)
+                trainer = training.TrainBERT(berti, method=method, train_dataloader=train_loader, test_dataloader=test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, info=info)
             elif method == 'bert_slanted_lr':
-                trainer = training.TrainBERT(berti, scheduler=method, train_dataloader=train_loader, test_dataloader=test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, info=info)
+                trainer = training.TrainBERT(berti, method=method, train_dataloader=train_loader, test_dataloader=test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, info=info)
             # default
             else:
-                trainer = training.TrainBERT(berti, train_loader, test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, info=info)
+                trainer = training.TrainBERT(berti, method=method, train_loader=train_loader, test_dataloader=test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, info=info)
 
             auc_list = trainer.run()
             # select best performing model

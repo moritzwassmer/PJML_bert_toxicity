@@ -8,7 +8,8 @@ import matplotlib.pyplot as plt
 from wordcloud import WordCloud, STOPWORDS
 import pandas as pd
 from transformers import BertTokenizer
-  
+
+
 def generate_wordcloud(text, Title, max_words=20):
     wordcloud = WordCloud(width=800, height=400, max_words=max_words, stopwords=set(
         STOPWORDS), background_color='white').generate(text)
@@ -22,7 +23,7 @@ def tokenize_text(text, tokenizer):
     tokens = tokenizer.encode(text, add_special_tokens=False)
     return len(tokens)
 
-# TASK SHEET: show
+
 def show(csv_path, output_folder=None, graph_name=None):
     """
     Generate and display various graphs based on the specified graph_name using data from a CSV file.
@@ -187,29 +188,40 @@ def main():
     Main function to load the data for toxic comment classification, set up a BERT model and run a training 
 
     - loads the dataset of specified length, batch size and transformations into a dataloader
-    - sets up a BERT model for specified vocabulary size, model dimension, pretrained BERT base model, number of encoders and number of attention heads per encoder
+    - configures a BERT model by the standard parameters for vocabulary size, model dimension, pretrained BERT base model, number of encoders and number of attention heads per encoder
+    - the method chosen in params.py defines the method used for training and testing
     - starts training the BERT model
+    - evaluates the parameters returned from the validation and writes them in the method-specific output file
+
+    Visualizations:
+    - uncomment the visualization lines below to generate plots:
+      - show(TOXIC + 'train.csv', graph_name="dstr_toxic"): Generates plots without saving
+      - show((TOXIC + 'train.csv'), output_folder=OUTPUT, graph_name="dstr_toxic"): Saves plots in the 'output_folder'
+
+    Note: Note, that plotting number of tokens per label/distribution takes time to process, since data from csv is tokenized first
 
     """
-    
+
     # visualization of plots
     # show(TOXIC +'train.csv', graph_name="dstr_toxic")  # plots without saving
     # show((TOXIC +'train.csv'), output_folder=OUTPUT, graph_name="dstr_toxic")  # plots and saves in 'output_folder'
-    # Note, that plotting number of tokens per label/distribution takes time to process, since data from csv is tokenized first
+
     labels, predictions, avg_loss, len_data = train_apply(method=METHOD)
     metrics = calc_metrics(labels, predictions, avg_loss, len_data)
     message = f"\nValidation\nAvg. testing loss: {metrics['avg_loss']:.2f}, avg. ROC-AUC: {metrics['roc_auc']:.2f}, Accuracy: {metrics['accuracy']:.2f}, TPR: {metrics['TPR']:.2f}, FPR: {metrics['FPR']:.2f}, TNR: {metrics['TNR']:.2f}, FNR: {metrics['FNR']:.2f}\n"
-    auc_classes = '\n'.join([f'ROC-AUC for {label}: {metrics[label]:.2f}'for label in ORDER_LABELS])
+    auc_classes = '\n'.join(
+        [f'ROC-AUC for {label}: {metrics[label]:.2f}'for label in ORDER_LABELS])
     message = message + auc_classes
     print(message)
-    
+
     # write results
     if METHOD == 'bert_discr_lr':
-        write_results(message, "testing_bert_discr_lr")
+        write_results(message, DISCR_TEST)
     elif METHOD == 'bert_slanted_lr':
-        write_results(message, 'testing_bert_slanted_lr')
+        write_results(message, SLANTED_TEST)
     else:
-        write_results(message, "testing_bert_base")
+        write_results(message, BASE_TEST)
+
 
 if __name__ == "__main__":
     main()
