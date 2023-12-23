@@ -81,6 +81,7 @@ class DiscriminativeLRScheduler(torch.optim.lr_scheduler._LRScheduler):
             # print(param_group['lr'])
         return decay_lrs
 
+
 class SlantedLRScheduler(torch.optim.lr_scheduler._LRScheduler):
     def __init__(self, optimizer, iterations, start_lr, ratio=32, eta_max=ETA_MAX, cut_frac=0.1, last_epoch=-1, decay=DECAY):
         self.eta_max = eta_max

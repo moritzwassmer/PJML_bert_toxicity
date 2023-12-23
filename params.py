@@ -57,7 +57,7 @@ SLANTED_TEST = 'test_slanted' #'testing_bert_slanted_lr'
 SLANTED_TRAIN = 'train_slanted' #'training_bert_slanted_lr'
 
 # RUN SPECIFIC
-METHOD = 'bert_slanted_lr'  
+METHOD = 'bert_base'  
 TRAIN_LENGTH = 12800 #159571
 TRAIN_TOTAL= 159571  
 TEST_LENGTH = 25600 #63978  
@@ -70,7 +70,7 @@ LEARNING_RATE = 0.00001
 THRESHOLD = 0.5
 HYPER_PARAMS = {
     'batch_size': [16, 32],
-    'learning_rate': [2e-5, 1e-5, 1e-6],
+    'learning_rate': [2e-5, 1e-5, 1e-6], # proposed 5e-5, 3e-5, 2e-5
     'epochs': 4
 }
 ORDER_LABELS = ['toxic', 'severe_toxic',
