@@ -44,8 +44,8 @@ Configuration parameters:
 
 # DATASET PATH
 # TOXIC = r"C:/Users/Johannes/Project Machine Learning/datasets/finetuning/toxic_comment/"  # Johannes
-TOXIC = r"/home/space/datasets/toxic_comment/"  # cluster path
-# TOXIC = r"C:\Users\morit\OneDrive\UNI\Master\WS23\PML\repo\bert_from_scratch.toxic_comment\datasets\finetuning\kaggle-toxic_comment/" # Moritz
+#TOXIC = r"/home/space/datasets/toxic_comment/"  # cluster path
+TOXIC = r"C:\Users\morit\OneDrive\UNI\Master\WS23\PML\repo\bert_from_scratch.toxic_comment\datasets\finetuning\kaggle-toxic_comment/" # Moritz
 
 # OUTPUT DIRECTORY DEFINITIONS
 OUTPUT = "output_folder"  
@@ -57,22 +57,19 @@ SLANTED_TEST = 'test_slanted' #'testing_bert_slanted_lr'
 SLANTED_TRAIN = 'train_slanted' #'training_bert_slanted_lr'
 
 # RUN SPECIFIC
-METHOD = 'bert_base'  
-TRAIN_LENGTH = 12800 #159571
+METHOD = 'bert_base' #"bert_slanted_lr" #'bert_base' 
+TRAIN_LENGTH = 159571//4 #12800 #159571
 TRAIN_TOTAL= 159571  
-TEST_LENGTH = 25600 #63978  
+TEST_LENGTH = 63978//4 #25600 #63978  
 VAL_LENGTH = TEST_LENGTH//2  
 NUM_CLASSES = 6
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-BATCH_SIZE = 32
+BATCH_SIZE = 4 #32
 EPOCHS = 4
 LEARNING_RATE = 0.00001
 THRESHOLD = 0.5
-HYPER_PARAMS = {
-    'batch_size': [16, 32],
-    'learning_rate': [2e-5, 1e-5, 1e-6], # proposed 5e-5, 3e-5, 2e-5
-    'epochs': 4
-}
+
+
 ORDER_LABELS = ['toxic', 'severe_toxic',
                 'obscene', 'threat', 'insult', 'identity_hate']
 CLASS_WEIGHTS = {
@@ -84,8 +81,15 @@ CLASS_WEIGHTS = {
     'identity_hate':  TRAIN_TOTAL/(1405*NUM_CLASSES)
 }
 WEIGHTS_LIST = [CLASS_WEIGHTS[key] for key in ORDER_LABELS]
-ETA_MAX = 0.01
-DECAY = 0.95
+RESCALING_FACTOR = torch.tensor(sum(CLASS_WEIGHTS.values())/len(CLASS_WEIGHTS.keys()), device=DEVICE)
+
+DECAY = 0.9
+
+HYPER_PARAMS = {
+    'batch_size': [4],
+    'learning_rate': [2.5e-5], # proposed 5e-5, 3e-5, 2e-5 # 2e-5, 1e-5, 1e-6  #  1e-5 looked promising
+    'epochs': 4
+}
 
 # MODEL OR TOKENIZER SPECIFIC
 TOKENIZER = BertTokenizer.from_pretrained("bert-base-uncased")

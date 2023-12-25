@@ -76,14 +76,14 @@ class DiscriminativeLRScheduler(torch.optim.lr_scheduler._LRScheduler):
         # apply discriminative layer rate layer-wise
         decay_lrs = [learning_rate * (self.decay**i)
                      for i in range(len(self.optimizer.param_groups))]
-        for param_group, decay_lr in zip(self.optimizer.param_groups, decay_lrs):
-            param_group['lr'] = decay_lr
+        """for param_group, decay_lr in zip(self.optimizer.param_groups, decay_lrs):
+            param_group['lr'] = decay_lr"""
             # print(param_group['lr'])
         return decay_lrs
 
 
 class SlantedLRScheduler(torch.optim.lr_scheduler._LRScheduler):
-    def __init__(self, optimizer, iterations, start_lr, ratio=32, eta_max=ETA_MAX, cut_frac=0.1, last_epoch=-1, decay=DECAY):
+    def __init__(self, optimizer, iterations, start_lr, ratio=32, eta_max=LEARNING_RATE, cut_frac=0.1, last_epoch=-1, decay=DECAY, discriminative = True):
         self.eta_max = eta_max
         self.cut = iterations * cut_frac
         self.cut_frac = cut_frac
@@ -92,6 +92,7 @@ class SlantedLRScheduler(torch.optim.lr_scheduler._LRScheduler):
         self.decay = decay
         self.start_lr = start_lr
         self.t = last_epoch
+        self.discriminative = discriminative
         super().__init__(optimizer, last_epoch)
 
     def get_lr(self):
@@ -105,15 +106,22 @@ class SlantedLRScheduler(torch.optim.lr_scheduler._LRScheduler):
                      (self.cut * (1 / self.cut_frac - 1)))
             learning_rate = self.eta_max * \
                 ((1 + p * (self.ratio - 1)) / self.ratio)
-        learning_rate = self.start_lr
+        #learning_rate = self.start_lr
         # apply discriminative layer rate layer-wise
-        decay_lrs = [learning_rate * (self.decay**i)
-                     for i in range(len(self.optimizer.param_groups))]
-        for param_group, decay_lr in zip(self.optimizer.param_groups, decay_lrs):
-            param_group['lr'] = decay_lr
-            # print(param_group['lr'])
-        return decay_lrs
-
+        if self.discriminative:
+            decay_lrs = [learning_rate * (self.decay**i)
+                        for i in range(len(self.optimizer.param_groups))]
+            return decay_lrs
+        else:
+            no_decay_lrs = [learning_rate
+                        for i in range(len(self.optimizer.param_groups))]
+            #print(no_decay_lrs)
+            return no_decay_lrs
+"""for param_group, decay_lr in zip(self.optimizer.param_groups, decay_lrs):
+            param_group['lr'] = decay_lr"""
+# print(param_group['lr'])
+#print(decay_lrs)
+        
 
 class TrainBERT:
     """
@@ -205,11 +213,22 @@ class TrainBERT:
 
             # learning rate scheduler
             iterations = self.epochs*len(train_dataloader)
-            self.scheduler = SlantedLRScheduler(
-                self.optimizer, iterations, learning_rate)
+            
+            """self.scheduler = SlantedLRScheduler(
+                self.optimizer, iterations, learning_rate)"""
+            self.scheduler = SlantedLRScheduler(self.optimizer, iterations,0, eta_max=learning_rate)
+            """
+            __init__(self, optimizer, max_mul, ratio, steps_per_cycle, decay=1, last_epoch=-1):
 
+            def __init__(self, optimizer, iterations, start_lr, ratio=32, eta_max=ETA_MAX, cut_frac=0.1, last_epoch=-1, decay=DECAY):"""
+            
+            
+            """self.scheduler = STLR(
+                self.optimizer, max_mul=2, ratio=4, steps_per_cycle=iterations, decay=DECAY, last_epoch=-1) # ratio = batch_size?"""
+            
             # Print the current learning rate
-            # current_lr = self.optimizer.param_groups[0]['lr']
+            #current_lr = self.optimizer.param_groups[0]['lr']
+            #print(current_lr)
             # check learning rates (write in 'learning_rates' in output_folder)
             # write_results(str(current_lr) +'\n', "learning_rates")
             self.criterion = nn.BCEWithLogitsLoss(
@@ -218,24 +237,32 @@ class TrainBERT:
             )
 
         # default
-        else:
+        elif self.method == 'bert_base':
             self.train_res = BASE_TRAIN
             self.test_res = BASE_TEST
             # optimizer: Adam
+
+            """self.optimizer = optim.Adam(
+                self.model.parameters(), lr=learning_rate, weight_decay=0.01)"""
+            
             self.optimizer = optim.Adam(
-                self.model.parameters(), lr=learning_rate)
+                self.create_param_groups(), lr=learning_rate, weight_decay=0.01)
+
             # lr scheduler
-            self.scheduler = StepLR(self.optimizer, step_size=5, gamma=0.1)
+            iterations = self.epochs*len(train_dataloader)
+            self.scheduler = SlantedLRScheduler(self.optimizer, iterations, 0, eta_max=learning_rate, discriminative=False, cut_frac=10000/len(train_dataloader))
 
             # loss function
             self.criterion = nn.BCEWithLogitsLoss(
                 reduction="mean",
                 pos_weight=torch.Tensor(WEIGHTS_LIST).to(DEVICE)
             )
+        else:
+            raise NotImplementedError()
         self.info = info
         self.validate = validate
 
-    def create_param_groups(self):
+    def create_param_groups(self): # TODO SIMPLIFY
         toxic_comment = []
         encoders = [[] for _ in range(12)]
         embedding = []
@@ -325,7 +352,7 @@ class TrainBERT:
 
             # forward pass: comments trough model
             preds = self.model.forward(data['input'])
-            loss = self.criterion(preds, labels)
+            loss = self.criterion(preds, labels)#/RESCALING_FACTOR # TODO ALSO CHANGE IN TEST VALIDATION
             avg_loss += loss.item()
 
             # backward pass for training
@@ -337,7 +364,7 @@ class TrainBERT:
             all_predictions = torch.cat((all_predictions, preds.detach()))
 
             # update slanted triangular learning rate scheduler after every batch
-            if self.method == 'bert_discr_lr' or self.method == 'bert_slanted_lr':
+            if  self.method == 'bert_slanted_lr' or self.method == 'bert_base':
                 self.scheduler.step()
                 # Print the current learning rate
                 # current_lr = self.optimizer.param_groups[0]['lr']
@@ -345,7 +372,7 @@ class TrainBERT:
                 # write_results(str(current_lr) + '\n', "learning_rates")
 
         # update normal learning rate scheduler
-        if self.method == 'bert_base':
+        if  self.method == 'bert_discr_lr':
             self.scheduler.step()
 
         self.metrics = calc_metrics(
@@ -388,7 +415,7 @@ class TrainBERT:
                 # forward pass: comments through model
                 preds = self.model.forward(data['input'])
 
-                loss = self.criterion(preds, labels)
+                loss = self.criterion(preds, labels)#//RESCALING_FACTOR # TODO
 
                 avg_loss += loss.item()
 
