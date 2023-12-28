@@ -10,38 +10,56 @@ import pandas as pd
 from transformers import BertTokenizer
 
 
-def generate_wordcloud(text, Title, max_words=20):
+def generate_wordcloud(text, title, max_words=20):
+    """
+    Generates a word cloud visualization based on the input test.
+
+    Args:
+        text (str): Input text on which to generate the word cloud
+        title (str): Title of the word cloud
+        max_words (int): Maximum number of words to display in word cloud
+    """
     wordcloud = WordCloud(width=800, height=400, max_words=max_words, stopwords=set(
         STOPWORDS), background_color='white').generate(text)
     plt.figure(figsize=(10, 5))
     plt.imshow(wordcloud, interpolation='bilinear')
     plt.axis("off")
-    plt.title(Title)
+    plt.title(title)
 
 
 def tokenize_text(text, tokenizer):
+    """
+    Tokenizes the input with given tokenizer and returns the number of tokens.
+
+    Args: 
+         text (str): Input text to be tokenized
+         tokenizer: Tokenizer to be applied
+    
+    Returns:
+        int: Number of tokens obtained from input text after tokenization
+    """
     tokens = tokenizer.encode(text, add_special_tokens=False)
     return len(tokens)
 
 
 def show(csv_path, output_folder=None, graph_name=None):
     """
-    Generate and display various graphs based on the specified graph_name using data from a CSV file.
+    Generates and displays various graphs based on the specified graph_name using data from a CSV file.
 
     Args:
-    - csv_path (str): The file path of the CSV file containing the data
-    - output_folder (str, optional): If provided, the generated graphs will be saved in this folder
-    - graph_name (str, optional): The name of the graph to generate, possible values:
-        - 'dstr_toxic': Distribution of toxic label occurrences
-        - 'wrdcloud_clean': Word cloud for non-toxic comments
-        - 'wrdcloud_toxic': Word cloud for toxic comments
-        - 'length_per_label': Average comment length for each label
-        - 'dstr_length': Distribution of comment lengths
-        - 'token_length_per_label': Average token length for each label
-        - 'token_length_distribution': Distribution of token lengths for the entire dataset
+        csv_path (str): The file path of the CSV file containing the data
+        output_folder (str, optional): If provided, the generated graphs will be saved in this folder
+        graph_name (str, optional): The name of the graph to generate, possible values:
+            'dstr_toxic': Distribution of toxic label occurrences
+            'wrdcloud_clean': Word cloud for non-toxic comments
+            'wrdcloud_toxic': Word cloud for toxic comments
+            'length_per_label': Average comment length for each label
+            'dstr_length': Distribution of comment lengths
+            'token_length_per_label': Average token length for each label
+            'token_length_distribution': Distribution of token lengths for the entire dataset
 
     Returns:
-    - None: Displays the generated graph or saves it in the specified output_folder.
+        None: Displays the generated graph or saves it in the specified output_folder.
 
     Example usage:
     ```python
@@ -185,7 +203,7 @@ def show(csv_path, output_folder=None, graph_name=None):
 
 def main():
     """
-    Main function to load the data for toxic comment classification, set up a BERT model and run a training 
+    Main function to load the data for toxic comment classification, set up a BERT model and run a training. 
 
     - loads the dataset of specified length, batch size and transformations into a dataloader
     - configures a BERT model by the standard parameters for vocabulary size, model dimension, pretrained BERT base model, number of encoders and number of attention heads per encoder
@@ -195,8 +213,8 @@ def main():
 
     Visualizations:
     - uncomment the visualization lines below to generate plots:
-      - show(TOXIC + 'train.csv', graph_name="dstr_toxic"): Generates plots without saving
-      - show((TOXIC + 'train.csv'), output_folder=OUTPUT, graph_name="dstr_toxic"): Saves plots in the 'output_folder'
+        - show(TOXIC + 'train.csv', graph_name="dstr_toxic"): Generates plots without saving
+        - show((TOXIC + 'train.csv'), output_folder=OUTPUT, graph_name="dstr_toxic"): Saves plots in the 'output_folder'
 
     Note: Note, that plotting number of tokens per label/distribution takes time to process, since data from csv is tokenized first
 
@@ -211,13 +229,13 @@ def main():
     message = f"\nValidation\nAvg. testing loss: {metrics['avg_loss']:.2f}, avg. ROC-AUC: {metrics['roc_auc']:.2f}, Accuracy: {metrics['accuracy']:.2f}, TPR: {metrics['TPR']:.2f}, FPR: {metrics['FPR']:.2f}, TNR: {metrics['TNR']:.2f}, FNR: {metrics['FNR']:.2f}\n"
     auc_classes = '\n'.join(
         [f'ROC-AUC for {label}: {metrics[label]:.2f}'for label in ORDER_LABELS])
-    message = message + auc_classes
+    message = message + auc_classes + '\n'
     print(message)
 
     # write results
-    if METHOD == 'bert_discr_lr':
+    if METHOD == 'discriminative':
         write_results(message, DISCR_TEST)
-    elif METHOD == 'bert_slanted_lr':
+    elif METHOD == 'slanted_discriminative':
         write_results(message, SLANTED_TEST)
     else:
         write_results(message, BASE_TEST)
