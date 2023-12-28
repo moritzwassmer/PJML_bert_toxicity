@@ -5,21 +5,32 @@ from params import *
 import training
 from torch.utils.data import random_split
 
-def load_data(dataset: str, transformation=None, n_train: int = None, n_test: int = None, n_val: int = None, batch_size=32, shuffle=True):  
+
+def load_data(dataset: str, transformation=None, n_train: int = None, n_test: int = None, n_val: int = None, batch_size=32, shuffle=True):
     """
-    Function to load dataset in path indicated by name, specify number of training and testing samples, apply transformations and return dataloader.
+    Function to load dataset specified by name, apply transformations and return dataloaders for training, testing and validation if required. 
+    The test set is split in half into test and validation set, if validation set is required (half the size of n_test each).
 
     Args:
         dataset (str): name of dataset
         transformation (callable): transformation to apply to the data (default: None)
-        att_head_dim (int): dimension of each attention head
-        n_train (int): number of training samples (default: None)
-        n_test (int): number of testing samples (default: None)
+        n_train (int): Size of training set to load (default: None) 
+        n_test (int): Size of testing set to load (default: None)
+        n_val (int): Size of validation set to load (default: None)
+        batch_size (int): Batch size (default: 32)
+        shuffle (bool): Whether data is loaded in randomized order (default: True)
+
 
     Returns:
-        Tuple[torch.utils.data.DataLoader]: training and testing dataloader
+        If validation set is required:
+            Tuple[torch.utils.data.DataLoader]: training, testing and validation dataloader
+        Otherwise:
+            Tuple[torch.utils.data.DataLoader]: training and testing dataloader
+
+    Raises:
+        NotImplementedError: If the specified dataset does not exist
     """
-        
+
     if dataset == "jigsaw_toxicity_pred":
         train = custom_datasets.ToxicComment(
             tokenizer=transformation,
@@ -46,7 +57,7 @@ def load_data(dataset: str, transformation=None, n_train: int = None, n_test: in
             val = DataLoader(val, batch_size, shuffle)
 
             return train, test, val
-        
+
         # if no validation set required
         else:
             # initialize dataloader for testing
@@ -56,33 +67,48 @@ def load_data(dataset: str, transformation=None, n_train: int = None, n_test: in
 
     else:
         raise NotImplementedError("Dataset not implemented")
-    
-# Task sheet function: method ={"base", "discriminative"}
-def train_apply(method="base", dataset="jigsaw_toxicity_pred"):
 
-    # default: BERTBase
+
+# Task sheet function: method: {"base", "discriminative", "slanted_discriminative"}
+def train_apply(method="base", dataset="jigsaw_toxicity_pred"):
+    """
+    TASK SHEET: Trains a BERT-based model for toxic comment classification with the specified learning rate scheduling method on a given dataset and performs model selection 
+    based on the given hyperparameters. It returns the validation results. The learning rate scheduler methods are "base", "discriminative", "slanted_discriminative".
+
+    Args:
+        method (str): Learning rate method to use for training. Available are "base", "discriminative" and "slanted_discriminative" (default: "base")
+        dataset (str): Name of the dataset to train on (default: "jigsaw_toxicity_pred")
+    
+    Returns:
+        tuple (labels, predictions, avg_loss, len_data): Validation results after training the model
+    """
+
     berti = models.Model()
 
-    # define batch size
     for batch_size in HYPER_PARAMS['batch_size']:
-        train_loader, test_loader, val_loader = load_data(dataset, transformation=TOKENIZER, n_train=TRAIN_LENGTH, n_test=TEST_LENGTH, n_val=VAL_LENGTH, batch_size=batch_size, shuffle=True)
+        train_loader, test_loader, val_loader = load_data(
+            dataset, transformation=TOKENIZER, n_train=TRAIN_LENGTH, n_test=TEST_LENGTH, n_val=VAL_LENGTH, batch_size=batch_size, shuffle=True)
         best_model = [None, 0, None]
 
         for learning_rate in HYPER_PARAMS['learning_rate']:
             # hyperparameter stats
             info = f"\nHyperparameters: batch size: {batch_size}, learning rate: {learning_rate}\n"
             print(info)
-                    
+
             # assign epochs and learning rate
             if method == 'base':
-                trainer = training.TrainBERT(berti,  method=method, train_dataloader=train_loader, test_dataloader=test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, info=info)
+                trainer = training.TrainBERT(berti,  method=method, train_dataloader=train_loader,
+                                             test_dataloader=test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, info=info)
             elif method == 'discriminative':
-                trainer = training.TrainBERT(berti, method=method, train_dataloader=train_loader, test_dataloader=test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, info=info)
+                trainer = training.TrainBERT(berti, method=method, train_dataloader=train_loader,
+                                             test_dataloader=test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, info=info)
             elif method == 'slanted_discriminative':
-                trainer = training.TrainBERT(berti, method=method, train_dataloader=train_loader, test_dataloader=test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, info=info)
+                trainer = training.TrainBERT(berti, method=method, train_dataloader=train_loader,
+                                             test_dataloader=test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, info=info)
             # default
             else:
-                trainer = training.TrainBERT(berti, method=method, train_dataloader=train_loader, test_dataloader=test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, info=info)
+                trainer = training.TrainBERT(berti, method=method, train_dataloader=train_loader,
+                                             test_dataloader=test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, info=info)
 
             auc_list = trainer.run()
             # select best performing model
@@ -90,10 +116,10 @@ def train_apply(method="base", dataset="jigsaw_toxicity_pred"):
                 if auc_list[i] > best_model[1]:
                     # save: [model, auc value, hyperparameter info, epochs]
                     best_model = [berti, auc_list[i], info, i]
-    print(f'Optimal hyperparameters are: {best_model[2][:-1]}, epochs: {best_model[3]+1}, with an avg. ROC-AUC of: {best_model[1]:.2f}\n')
+    message = f'\nOptimal hyperparameters are: {best_model[2][:-1]}, epochs: {best_model[3]+1} with an avg. ROC-AUC of: {best_model[1]:.2f}\n'
+    print(message)
 
     # validate
-    validator = training.TrainBERT(best_model[0],test_dataloader=val_loader, epochs=1, validate=True, info="Validiation\n" + best_model[2])
-    # auc_val = validator.run()
-    # print(f'Optimal hyperparameters are: {best_model[2][:-1]}, epochs: {best_model[3]+1}, with a ROC-AUC on validation set of: {auc_val[0]:.2f}')
-    return validator.run() 
+    validator = training.TrainBERT(
+        best_model[0], test_dataloader=val_loader, epochs=1, validate=True, info=message)
+    return validator.run()

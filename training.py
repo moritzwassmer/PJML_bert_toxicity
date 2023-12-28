@@ -33,7 +33,7 @@ def calc_metrics(labels, predictions, loss, len_dataset, epoch=0):
         predictions (torch.Tensor): Predictions of the model for the same data
         loss (float): summed loss per epoch
         len_dataset (int): Length of the input dataset
-        epoch (int): Current epoch number (optional, default=0)
+        epoch (int): Current epoch number (optional, default: 0)
 
     Returns:
         dict: dictionary containing all the computed metrics, which are: epoch, abg_loss, roc_auc, accuracy, TPR, FPR, TNR, FNR, toxic (ROC-AUC), severe_toxic (ROC-AUC), 
@@ -97,8 +97,8 @@ class DiscriminativeLRScheduler(torch.optim.lr_scheduler._LRScheduler):
         Args:
             optimizer (torch.optim.Optimizer): Optimizer for which to define the learning rate
             start_lr (float): Initial learning rate
-            last_epoch (int): Index of the last epoch (optional, default=-1)
-            decay (float): Decay rate applied per layer to the learning rate (default=DECAY)
+            last_epoch (int): Index of the last epoch (optional, default: -1)
+            decay (float): Decay rate applied per layer to the learning rate (default: DECAY)
         """
         self.decay = decay
         self.start_lr = start_lr
@@ -141,12 +141,12 @@ class SlantedLRScheduler(torch.optim.lr_scheduler._LRScheduler):
         Args: 
             optimizer (torch.optim.Optimizer): Optimizer for which to define the learning rate
             iterations (int): Number of iterations over which the learning rate has to be calculated (epochs*batches per epoch)
-            ratio (int): Change ratio for learning rate (default=32)
-            eta_max (float, optional): Maximum learning rate (default=1e-05)
-            cut_frac (float, optional): Fraction of iteration at which the learning rate reaches the peak (default=0.1)
-            last_epoch (int, optional): Index of the last epoch (default=-1)
-            decay (float): Decay term for optional discriminative layer-wise learning rate (default=DECAY)
-            discriminative (bool): Flag to apply discriminative layer (default=True)
+            ratio (int): Change ratio for learning rate (default: 32)
+            eta_max (float, optional): Maximum learning rate (default: 1e-05)
+            cut_frac (float, optional): Fraction of iteration at which the learning rate reaches the peak (default: 0.1)
+            last_epoch (int, optional): Index of the last epoch (default: -1)
+            decay (float): Decay term for optional discriminative layer-wise learning rate (default: DECAY)
+            discriminative (bool): Flag to apply discriminative layer (default: True)
         """
         self.eta_max = eta_max
         self.cut = iterations * cut_frac
@@ -216,13 +216,13 @@ class TrainBERT:
 
         Args: 
             model (nn.Module): BERT-based toxic comment classification model
-            method (str): Method for learning rate scheduling (default='base')
-            train_dataloader (torch.utils.data.DataLoader): Dataloader for training (default=None)
-            test_dataloader (torch.utils.data.DataLoader): Dataloader for testing (default=None)
-            epochs (int): Number of epochs for training (default=4)
-            learning_rate (float): Initial learning rate for optimization (default=1e-05)
-            validate (bool): Flag to determine if validation should be performed (default=false)
-            info (str): Additional information or metadata (default=None)
+            method (str): Method for learning rate scheduling (default: 'base')
+            train_dataloader (torch.utils.data.DataLoader): Dataloader for training (default: None)
+            test_dataloader (torch.utils.data.DataLoader): Dataloader for testing (default: None)
+            epochs (int): Number of epochs for training (default: 4)
+            learning_rate (float): Initial learning rate for optimization (default: 1e-05)
+            validate (bool): Flag to determine if validation should be performed (default: false)
+            info (str): Additional information or metadata (default: None)
         """
 
         # parameters
@@ -423,15 +423,11 @@ class TrainBERT:
             all_predictions = torch.cat((all_predictions, preds.detach()))
 
             # update slanted triangular learning rate scheduler after every batch
-            if self.method == 'inative' or self.method == 'base':
+            if self.method == 'slanted_discriminative' or self.method == 'base':
                 self.scheduler.step()
-                # Print the current learning rate
-                # current_lr = self.optimizer.param_groups[0]['lr']
-                # check learning rates (write in 'learning_rates' in output_folder)
-                # write_results(str(current_lr) + '\n', "learning_rates")
 
         # update normal learning rate scheduler
-        if self.method == 'dscriminative':
+        if self.method == 'discriminative':
             self.scheduler.step()
 
         self.metrics = calc_metrics(
