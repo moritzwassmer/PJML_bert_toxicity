@@ -5,7 +5,7 @@ from params import *
 import training
 from torch.utils.data import random_split
 
-def load_data(dataset: str, transformation=None, n_train: int = None, n_test: int = None, n_val: int = None, batch_size=BATCH_SIZE, shuffle=True):  
+def load_data(dataset: str, transformation=None, n_train: int = None, n_test: int = None, n_val: int = None, batch_size=32, shuffle=True):  
     """
     Function to load dataset in path indicated by name, specify number of training and testing samples, apply transformations and return dataloader.
 
@@ -57,8 +57,8 @@ def load_data(dataset: str, transformation=None, n_train: int = None, n_test: in
     else:
         raise NotImplementedError("Dataset not implemented")
     
-# Task sheet function: method ={"bert_base", "bert_discr_lr"}
-def train_apply(method="bert_base", dataset="jigsaw_toxicity_pred"):
+# Task sheet function: method ={"base", "discriminative"}
+def train_apply(method="base", dataset="jigsaw_toxicity_pred"):
 
     # default: BERTBase
     berti = models.Model()
@@ -74,15 +74,15 @@ def train_apply(method="bert_base", dataset="jigsaw_toxicity_pred"):
             print(info)
                     
             # assign epochs and learning rate
-            if method == 'bert_base':
+            if method == 'base':
                 trainer = training.TrainBERT(berti,  method=method, train_dataloader=train_loader, test_dataloader=test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, info=info)
-            elif method == 'bert_discr_lr':
+            elif method == 'discriminative':
                 trainer = training.TrainBERT(berti, method=method, train_dataloader=train_loader, test_dataloader=test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, info=info)
-            elif method == 'bert_slanted_lr':
+            elif method == 'slanted_discriminative':
                 trainer = training.TrainBERT(berti, method=method, train_dataloader=train_loader, test_dataloader=test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, info=info)
             # default
             else:
-                trainer = training.TrainBERT(berti, method=method, train_loader=train_loader, test_dataloader=test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, info=info)
+                trainer = training.TrainBERT(berti, method=method, train_dataloader=train_loader, test_dataloader=test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, info=info)
 
             auc_list = trainer.run()
             # select best performing model

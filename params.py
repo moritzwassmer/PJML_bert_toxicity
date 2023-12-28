@@ -44,29 +44,26 @@ Configuration parameters:
 
 # DATASET PATH
 # TOXIC = r"C:/Users/Johannes/Project Machine Learning/datasets/finetuning/toxic_comment/"  # Johannes
-#TOXIC = r"/home/space/datasets/toxic_comment/"  # cluster path
-TOXIC = r"C:\Users\morit\OneDrive\UNI\Master\WS23\PML\repo\bert_from_scratch.toxic_comment\datasets\finetuning\kaggle-toxic_comment/" # Moritz
+TOXIC = r"/home/space/datasets/toxic_comment/"  # cluster path
+#TOXIC = r"C:\Users\morit\OneDrive\UNI\Master\WS23\PML\repo\bert_from_scratch.toxic_comment\datasets\finetuning\kaggle-toxic_comment/" # Moritz
 
 # OUTPUT DIRECTORY DEFINITIONS
 OUTPUT = "output_folder"  
 BASE_TEST = 'test_base' # 'testing_bert_base'
 BASE_TRAIN = 'train_base' # 'training_bert_base'
-DISCR_TEST = 'testing_bert_discr_lr'
-DISCR_TRAIN = 'training_bert_discr_lr'
-SLANTED_TEST = 'test_slanted' #'testing_bert_slanted_lr'
-SLANTED_TRAIN = 'train_slanted' #'training_bert_slanted_lr'
+DISCR_TEST = 'test_discriminative'
+DISCR_TRAIN = 'train_discriminative'
+SLANTED_TEST = 'test_slanted_discriminative' #'testing_bert_slanted_lr'
+SLANTED_TRAIN = 'train_slanted_discriminative' #'training_bert_slanted_lr'
 
 # RUN SPECIFIC
-METHOD = 'bert_base' #"bert_slanted_lr" #'bert_base' 
-TRAIN_LENGTH = 159571//4 #12800 #159571
+METHOD = 'base' # "slanted_discriminative", 'base', 'discriminative'
+TRAIN_LENGTH = 159571
 TRAIN_TOTAL= 159571  
-TEST_LENGTH = 63978//4 #25600 #63978  
+TEST_LENGTH = 63978  
 VAL_LENGTH = TEST_LENGTH//2  
 NUM_CLASSES = 6
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-BATCH_SIZE = 4 #32
-EPOCHS = 4
-LEARNING_RATE = 0.00001
 THRESHOLD = 0.5
 
 
@@ -83,11 +80,11 @@ CLASS_WEIGHTS = {
 WEIGHTS_LIST = [CLASS_WEIGHTS[key] for key in ORDER_LABELS]
 RESCALING_FACTOR = torch.tensor(sum(CLASS_WEIGHTS.values())/len(CLASS_WEIGHTS.keys()), device=DEVICE)
 
-DECAY = 0.9
+DECAY = 0.95
 
 HYPER_PARAMS = {
-    'batch_size': [4],
-    'learning_rate': [2.5e-5], # proposed 5e-5, 3e-5, 2e-5 # 2e-5, 1e-5, 1e-6  #  1e-5 looked promising
+    'batch_size': [16],
+    'learning_rate': [3e-5, 2e-5, 1e-5, 1e-6], 
     'epochs': 4
 }
 
