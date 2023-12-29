@@ -119,7 +119,7 @@ def train_apply(method="base", dataset="jigsaw_toxicity_pred"):
     message = f'\nOptimal hyperparameters are: {best_model[2][:-1]}, epochs: {best_model[3]+1} with an avg. ROC-AUC of: {best_model[1]:.2f}\n'
     print(message)
 
-    # validate
+    # validate 
     validator = training.TrainBERT(
-        best_model[0], test_dataloader=val_loader, epochs=1, validate=True, info=message)
+        best_model[0], method=method, test_dataloader=val_loader, epochs=1, validate=True, info=message)
     return validator.run()

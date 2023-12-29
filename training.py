@@ -426,7 +426,7 @@ class TrainBERT:
             if self.method == 'slanted_discriminative' or self.method == 'base':
                 self.scheduler.step()
 
-        # update normal learning rate scheduler
+        # update discriminative learning rate scheduler
         if self.method == 'discriminative':
             self.scheduler.step()
 
