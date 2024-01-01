@@ -87,12 +87,6 @@ HYPER_PARAMS = {
     'epochs': 4
 }
 
-HYPER_PARAMS = {
-    'batch_size': [16],
-    'learning_rate': [3e-5],
-    'epochs': 4
-}
-
 # MODEL OR TOKENIZER SPECIFIC
 TOKENIZER = BertTokenizer.from_pretrained("bert-base-uncased")
 BERT_BASE = "bert-base-uncased"

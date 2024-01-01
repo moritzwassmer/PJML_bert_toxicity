@@ -24,6 +24,19 @@ def write_results(output, file):
         file.write(output)
 
 
+def shannon_entropy(labels, predictions):
+    sum = 0
+    entropy = 0
+    for i in range(labels.shape[0]):
+        if labels[i] == 1:
+            sum += 1
+            #entropy += predictions[i]
+            entropy += -(predictions[i]*np.log(predictions[i] + 1e-10))
+    if sum == 0:
+        return 0
+    return entropy/sum
+
+
 def calc_metrics(labels, predictions, loss, len_dataset, epoch=0):
     """
     Calculates various metrics based on passed true labels and predictions.
@@ -44,8 +57,8 @@ def calc_metrics(labels, predictions, loss, len_dataset, epoch=0):
 
     # COMPUTE METRICS
     sigmoid = torch.nn.Sigmoid()
-    preds = sigmoid(predictions)
-    preds_th = torch.ge(preds, THRESHOLD).int()
+    preds_sigmoid = sigmoid(predictions)
+    preds_th = torch.ge(preds_sigmoid, THRESHOLD).int()
 
     T += (preds_th == labels).sum().item()
     TP += ((preds_th == 1) & (labels == 1)).sum().item()
@@ -54,11 +67,13 @@ def calc_metrics(labels, predictions, loss, len_dataset, epoch=0):
     FN += ((preds_th == 0) & (labels == 1)).sum().item()
     P += (labels == 1).sum().item()
     N += (labels == 0).sum().item()
+
     # sump up total number of labels in batch
     total += labels.nelement()
 
     labels = labels.cpu().numpy()
     predictions = predictions.cpu().numpy()
+    preds_sigmoid = preds_sigmoid.cpu().numpy()
 
     metrics = {
         'epoch': epoch+1,
@@ -76,6 +91,16 @@ def calc_metrics(labels, predictions, loss, len_dataset, epoch=0):
         'insult': roc_auc_score(np.array(labels)[:, 4], np.array(predictions)[:, 4], average='macro', multi_class='ovr'),
         'identity_hate': roc_auc_score(np.array(labels)[:, 5], np.array(predictions)[:, 5], average='macro', multi_class='ovr')
     }
+
+    # calculate confidence per label
+    confidence_scores = {}
+    for i in range(labels.shape[1]):
+        confidence = 1.0 - shannon_entropy(labels[:, i], preds_sigmoid[:, i])
+        # key: e.g. toxic_confidence
+        label_name = ORDER_LABELS[i] + "_confidence"
+        confidence_scores[label_name] = confidence
+
+    metrics.update(confidence_scores)
     return metrics
 
 
@@ -304,7 +329,7 @@ class TrainBERT:
         self.info = info
         self.validate = validate
 
-    def create_param_groups(self):  
+    def create_param_groups(self):
         """
         Groups the parameters of the BERT-toxic comment classification model by layer into parameter groups in reverse order.
         The parameters a grouped into "toxic_comment", the encoders and an embedding layer.
@@ -317,7 +342,7 @@ class TrainBERT:
         embedding = []
 
         # extract layers
-        for i,(name, module) in enumerate(self.model.named_parameters()):
+        for i, (name, module) in enumerate(self.model.named_parameters()):
             parts = name.split('.')
             # group layers
             if parts[0] == 'toxic_comment':
@@ -504,3 +529,17 @@ class TrainBERT:
             return self.metrics['roc_auc']
         else:
             return all_labels, all_predictions, avg_loss, len(self.testing_data)
+
+
+def test_shannon_entropy():
+    labels = np.array([1, 0, 1, 1, 0, 0])  # Example labels
+    predictions = np.array([0.9, 0.1, 0.8, 0.95, 0.2, 0])  # Example predictions
+
+    confidence = 1 -shannon_entropy(labels, predictions)
+    
+    # You can print or assert the calculated entropy value to verify
+    print(f"Shannon confidence: {confidence:.4f}")
+
+print("Testing shannon_entropy function:")
+test_shannon_entropy()
+    
