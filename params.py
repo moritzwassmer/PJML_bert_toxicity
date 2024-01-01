@@ -56,7 +56,7 @@ SLANTED_TRAIN = 'train_slanted_discriminative'  # 'training_bert_slanted_lr'
 
 # RUN SPECIFIC
 METHOD = 'base'  # "slanted_discriminative", 'base', 'discriminative'
-TRAIN_LENGTH = 159571
+TRAIN_LENGTH =159571
 TRAIN_TOTAL = 159571
 TEST_LENGTH = 63978
 VAL_LENGTH = TEST_LENGTH//2
@@ -84,6 +84,12 @@ DECAY = 0.95
 HYPER_PARAMS = {
     'batch_size': [16],
     'learning_rate': [3e-5, 2e-5, 1e-5, 1e-6],
+    'epochs': 4
+}
+
+HYPER_PARAMS = {
+    'batch_size': [16],
+    'learning_rate': [3e-5],
     'epochs': 4
 }
 
