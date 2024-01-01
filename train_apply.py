@@ -69,14 +69,14 @@ def load_data(dataset: str, transformation=None, n_train: int = None, n_test: in
         raise NotImplementedError("Dataset not implemented")
 
 
-# Task sheet function: method: {"base", "discriminative", "slanted_discriminative"}
+# Task sheet function: method: {"base", "slanted_discriminative"}
 def train_apply(method="base", dataset="jigsaw_toxicity_pred"):
     """
     TASK SHEET: Trains a BERT-based model for toxic comment classification with the specified learning rate scheduling method on a given dataset and performs model selection 
-    based on the given hyperparameters. It returns the validation results. The learning rate scheduler methods are "base", "discriminative", "slanted_discriminative".
+    based on the given hyperparameters. It returns the validation results. The learning rate scheduler methods are "base", "slanted_discriminative".
 
     Args:
-        method (str): Learning rate method to use for training. Available are "base", "discriminative" and "slanted_discriminative" (default: "base")
+        method (str): Learning rate method to use for training. Available are "base" and "slanted_discriminative" (default: "base")
         dataset (str): Name of the dataset to train on (default: "jigsaw_toxicity_pred")
     
     Returns:
@@ -99,9 +99,7 @@ def train_apply(method="base", dataset="jigsaw_toxicity_pred"):
             if method == 'base':
                 trainer = training.TrainBERT(berti,  method=method, train_dataloader=train_loader,
                                              test_dataloader=test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, info=info)
-            elif method == 'discriminative':
-                trainer = training.TrainBERT(berti, method=method, train_dataloader=train_loader,
-                                             test_dataloader=test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, info=info)
+
             elif method == 'slanted_discriminative':
                 trainer = training.TrainBERT(berti, method=method, train_dataloader=train_loader,
                                              test_dataloader=test_loader, epochs=HYPER_PARAMS['epochs'], learning_rate=learning_rate, info=info)

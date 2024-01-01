@@ -47,17 +47,14 @@ TOXIC = r"/home/space/datasets/toxic_comment/"  # cluster path
 
 # OUTPUT DIRECTORY DEFINITIONS
 OUTPUT = "output_folder"
-BASE_TEST = 'test_base'  # 'testing_bert_base'
-BASE_TRAIN = 'train_base'  # 'training_bert_base'
-DISCR_TEST = 'test_discriminative'
-DISCR_TRAIN = 'train_discriminative'
-SLANTED_TEST = 'test_slanted_discriminative'  # 'testing_bert_slanted_lr'
-SLANTED_TRAIN = 'train_slanted_discriminative'  # 'training_bert_slanted_lr'
+BASE_TEST = 'test_base'  
+BASE_TRAIN = 'train_base'  
+SLANTED_TEST = 'test_slanted_discriminative'  
+SLANTED_TRAIN = 'train_slanted_discriminative'  
 
 # RUN SPECIFIC
-METHOD = 'base'  # "slanted_discriminative", 'base', 'discriminative'
+METHOD = 'base'  # "slanted_discriminative", 'base'
 TRAIN_LENGTH =159571
-TRAIN_TOTAL = 159571
 TEST_LENGTH = 63978
 VAL_LENGTH = TEST_LENGTH//2
 NUM_CLASSES = 6
@@ -68,16 +65,16 @@ THRESHOLD = 0.5
 ORDER_LABELS = ['toxic', 'severe_toxic',
                 'obscene', 'threat', 'insult', 'identity_hate']
 CLASS_WEIGHTS = {
-    'toxic': TRAIN_TOTAL/(15294*NUM_CLASSES),
-    'severe_toxic': TRAIN_TOTAL/(1595*NUM_CLASSES),
-    'obscene':  TRAIN_TOTAL/(8449*NUM_CLASSES),
-    'threat':  TRAIN_TOTAL/(478*NUM_CLASSES),
-    'insult': TRAIN_TOTAL/(7877*NUM_CLASSES),
-    'identity_hate':  TRAIN_TOTAL/(1405*NUM_CLASSES)
+    'toxic': TRAIN_LENGTH/(15294*NUM_CLASSES),
+    'severe_toxic': TRAIN_LENGTH/(1595*NUM_CLASSES),
+    'obscene':  TRAIN_LENGTH/(8449*NUM_CLASSES),
+    'threat':  TRAIN_LENGTH/(478*NUM_CLASSES),
+    'insult': TRAIN_LENGTH/(7877*NUM_CLASSES),
+    'identity_hate':  TRAIN_LENGTH/(1405*NUM_CLASSES)
 }
 WEIGHTS_LIST = [CLASS_WEIGHTS[key] for key in ORDER_LABELS]
 RESCALING_FACTOR = torch.tensor(
-    sum(CLASS_WEIGHTS.values())/len(CLASS_WEIGHTS.keys()), device=DEVICE)
+    sum(CLASS_WEIGHTS.values())/len(CLASS_WEIGHTS.keys()), device=DEVICE) #TODO
 
 DECAY = 0.95
 

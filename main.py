@@ -235,9 +235,7 @@ def main():
     print(message)
 
     # write results
-    if METHOD == 'discriminative':
-        write_results(message, DISCR_TEST)
-    elif METHOD == 'slanted_discriminative':
+    if METHOD == 'slanted_discriminative':
         write_results(message, SLANTED_TEST)
     else:
         write_results(message, BASE_TEST)

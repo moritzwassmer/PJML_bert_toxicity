@@ -25,12 +25,22 @@ def write_results(output, file):
 
 
 def shannon_entropy(labels, predictions):
+    """
+    Calculates the Shannon entropy, given the labels and the predictions (probabilities) of the model for one class. The Shannon entropy
+    is the measure of uncertainty in the given predictions. Note: a small constant is added to the predictions to avoid log(0).
+
+    Args: 
+        labels (numpy.ndarray): True labels
+        predictions (numpy.ndarray): Predicted probabilities of the model for one class
+
+    Returns:
+        float: Shannon entropy value of the predictions
+    """
     sum = 0
     entropy = 0
     for i in range(labels.shape[0]):
         if labels[i] == 1:
             sum += 1
-            #entropy += predictions[i]
             entropy += -(predictions[i]*np.log(predictions[i] + 1e-10))
     if sum == 0:
         return 0
@@ -50,7 +60,8 @@ def calc_metrics(labels, predictions, loss, len_dataset, epoch=0):
 
     Returns:
         dict: dictionary containing all the computed metrics, which are: epoch, abg_loss, roc_auc, accuracy, TPR, FPR, TNR, FNR, toxic (ROC-AUC), severe_toxic (ROC-AUC), 
-        obscene (ROC-AUC), threat (ROC-AUC), insult (ROC-AUC), identity_hate (ROC-AUC)
+        obscene (ROC-AUC), threat (ROC-AUC), insult (ROC-AUC), identity_hate (ROC-AUC), toxic_confidence (confidence score), severe_toxic_confidence (confidence score), 
+        obscene_confidence (confidence score), threat_confidence (confidence score), insult_confidence (confidence score), identity_hate_confidence (confidence score)
     """
     T, TN, TP, FP, FN, P, N = 0, 0, 0, 0, 0, 0, 0
     total = 0
@@ -102,45 +113,6 @@ def calc_metrics(labels, predictions, loss, len_dataset, epoch=0):
 
     metrics.update(confidence_scores)
     return metrics
-
-
-class DiscriminativeLRScheduler(torch.optim.lr_scheduler._LRScheduler):
-    """
-    Discriminative learning rate scheduler, that adjusts the learning rate with a decay term for the layers of the model, so they decrease in depth. 
-
-    Attributes:
-        optimizer (torch.optim.Optimizer): Optimizer for which to define the learning rate
-        start_lr (float): Initial learning rate
-        last_epoch (int): INdex of the last epoch 
-        decay (float): Decay rate applied per layer to the learning rate 
-    """
-
-    def __init__(self, optimizer, start_lr, last_epoch=-1, decay=DECAY):
-        """
-        Initializes the DiscriminativeLRScheduler.
-
-        Args:
-            optimizer (torch.optim.Optimizer): Optimizer for which to define the learning rate
-            start_lr (float): Initial learning rate
-            last_epoch (int): Index of the last epoch (optional, default: -1)
-            decay (float): Decay rate applied per layer to the learning rate (default: DECAY)
-        """
-        self.decay = decay
-        self.start_lr = start_lr
-        super().__init__(optimizer, last_epoch)
-
-    def get_lr(self):
-        """
-        Computes decaying learning rate for each parameter group. 
-
-        Returns:
-            list: A list of decaying learning rates for all the layers of the model
-        """
-        learning_rate = self.start_lr
-        # apply discriminative layer rate layer-wise
-        decay_lrs = [learning_rate * (self.decay**i)
-                     for i in range(len(self.optimizer.param_groups))]
-        return decay_lrs
 
 
 class SlantedLRScheduler(torch.optim.lr_scheduler._LRScheduler):
@@ -210,7 +182,7 @@ class SlantedLRScheduler(torch.optim.lr_scheduler._LRScheduler):
 class TrainBERT:
     """
     Class to perform a training and a testing processes as well as a validation for the toxic comment classification model.
-    This can be performed for different learning rate methods like "base", "slanted_discriminative" and "discriminative".
+    This can be performed for different learning rate methods like "base" and "slanted_discriminative".
 
         Attributes:
             model (nn.Module): BERT-based toxic comment classification model
@@ -237,7 +209,7 @@ class TrainBERT:
     def __init__(self, model, method='base', train_dataloader=None, test_dataloader=None, epochs=4, learning_rate=1e-05, validate=False, info=None):
         """
         Initializes a validation or a training and testing processes for a BERT-based toxic comment classification model.
-        Allows to choose between the methods "base", "slanted_discriminative" and "discriminative" for learning rate scheduling.
+        Allows to choose between the methods "base" and "slanted_discriminative" for learning rate scheduling.
 
         Args: 
             model (nn.Module): BERT-based toxic comment classification model
@@ -267,25 +239,7 @@ class TrainBERT:
         # model to device
         self.model.to(DEVICE)
 
-        if self.method == 'discriminative':
-            self.train_res = DISCR_TRAIN
-            self.test_res = DISCR_TEST
-
-            # optimizer: Adam
-            self.optimizer = optim.Adam(
-                self.create_param_groups(), lr=learning_rate)
-
-            # learning rate scheduler
-            self.scheduler = DiscriminativeLRScheduler(
-                self.optimizer, learning_rate)
-
-            # loss function
-            self.criterion = nn.BCEWithLogitsLoss(
-                reduction="mean",
-                pos_weight=torch.Tensor(WEIGHTS_LIST).to(DEVICE)
-            )
-
-        elif self.method == 'slanted_discriminative':
+        if self.method == 'slanted_discriminative':
             self.train_res = SLANTED_TRAIN
             self.test_res = SLANTED_TEST
 
@@ -293,13 +247,7 @@ class TrainBERT:
             self.optimizer = optim.Adam(
                 self.create_param_groups(), lr=learning_rate)
 
-            # check number of parameter groups
-            # num_param_groups = len(self.optimizer.param_groups)
-            # print(f"Anzahl der Parametergruppen: {num_param_groups}")
-
             # lr scheduler
-            """self.scheduler = SlantedLRScheduler(
-                self.optimizer, iterations, learning_rate)"""
             self.scheduler = SlantedLRScheduler(
                 self.optimizer, self.iterations, eta_max=learning_rate, discriminative=True)
 
@@ -448,11 +396,6 @@ class TrainBERT:
             all_predictions = torch.cat((all_predictions, preds.detach()))
 
             # update slanted triangular learning rate scheduler after every batch
-            if self.method == 'slanted_discriminative' or self.method == 'base':
-                self.scheduler.step()
-
-        # update discriminative learning rate scheduler
-        if self.method == 'discriminative':
             self.scheduler.step()
 
         self.metrics = calc_metrics(
@@ -529,17 +472,3 @@ class TrainBERT:
             return self.metrics['roc_auc']
         else:
             return all_labels, all_predictions, avg_loss, len(self.testing_data)
-
-
-def test_shannon_entropy():
-    labels = np.array([1, 0, 1, 1, 0, 0])  # Example labels
-    predictions = np.array([0.9, 0.1, 0.8, 0.95, 0.2, 0])  # Example predictions
-
-    confidence = 1 -shannon_entropy(labels, predictions)
-    
-    # You can print or assert the calculated entropy value to verify
-    print(f"Shannon confidence: {confidence:.4f}")
-
-print("Testing shannon_entropy function:")
-test_shannon_entropy()
-    
