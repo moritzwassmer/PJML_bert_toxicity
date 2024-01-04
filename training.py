@@ -117,34 +117,38 @@ def calc_metrics(labels, predictions, loss, len_dataset, epoch=0):
 
 class SlantedLRScheduler(torch.optim.lr_scheduler._LRScheduler):
     """
-    Slanted triangular learning rate scheduler that increases the learning rate until eta_max for a 10000 steps and then decreases it again. 
+    Slanted triangular learning rate scheduler that increases the learning rate until eta_max for a given ratio and then decreases it again . 
     It can also optionally apply a layer-wise decay term on the learning rate (discriminative=True).
 
     Attributes:
         optimizer (torch.optim.Optimizer): Optimizer for which to define the learning rate
+        iterations (int): Number of iterations over which the learning rate has to be calculated 
         ratio (int): Change ratio for learning rate 
         eta_max (float, optional): Maximum learning rate 
-        cut (float, optional): Number of iterations at which the learning rate reaches the peak 
+        cut_frac (float, optional): Fraction of iteration at which the learning rate reaches the peak 
         last_epoch (int, optional): Index of the last epoch 
         decay (float): Decay term for optional discriminative layer-wise learning rate 
         discriminative (bool): Flag to apply discriminative layer 
     """
 
-    def __init__(self, optimizer, ratio=32, eta_max=1e-05, cut=WARMUP, last_epoch=-1, decay=DECAY, discriminative=True):
+    def __init__(self, optimizer, iterations, ratio=32, eta_max=1e-05, cut_frac=0.1, last_epoch=-1, decay=DECAY, discriminative=True):
         """
         Initializes the SLantedLRScheduler. 
 
         Args: 
             optimizer (torch.optim.Optimizer): Optimizer for which to define the learning rate
+            iterations (int): Number of iterations over which the learning rate has to be calculated (epochs*batches per epoch)
             ratio (int): Change ratio for learning rate (default: 32)
             eta_max (float, optional): Maximum learning rate (default: 1e-05)
-            cut (float, optional): Number of iteration at which the learning rate reaches the peak (default: 0.1)
+            cut_frac (float, optional): Fraction of iteration at which the learning rate reaches the peak (default: 0.1)
             last_epoch (int, optional): Index of the last epoch (default: -1)
             decay (float): Decay term for optional discriminative layer-wise learning rate (default: DECAY)
             discriminative (bool): Flag to apply discriminative layer (default: True)
         """
         self.eta_max = eta_max
-        self.cut = cut
+        self.cut = iterations * cut_frac
+        self.cut_frac = cut_frac
+        self.iterations = iterations
         self.ratio = ratio
         self.decay = decay
         self.t = last_epoch
@@ -164,7 +168,7 @@ class SlantedLRScheduler(torch.optim.lr_scheduler._LRScheduler):
             p = (self.t/self.cut)
         else:
             p = 1 - ((self.t - self.cut) /
-                     (self.cut * (1 / self.cut - 1)))
+                     (self.cut * (1 / self.cut_frac - 1)))
         learning_rate = self.eta_max * \
             ((1 + p * (self.ratio - 1)) / self.ratio)
         if not self.discriminative:
@@ -223,6 +227,10 @@ class TrainBERT:
         self.epochs = epochs
         self.training_data = train_dataloader
         self.testing_data = test_dataloader
+        if train_dataloader is None:
+            self.iterations = self.epochs*len(test_dataloader)
+        else:
+            self.iterations = self.epochs*len(train_dataloader)
 
         self.bar = None
         self.metrics = None
@@ -241,7 +249,7 @@ class TrainBERT:
 
             # lr scheduler
             self.scheduler = SlantedLRScheduler(
-                self.optimizer, eta_max=learning_rate, discriminative=True)
+                self.optimizer, self.iterations, eta_max=learning_rate, discriminative=True)
 
             self.criterion = nn.BCEWithLogitsLoss(
                 reduction="mean",
@@ -257,7 +265,7 @@ class TrainBERT:
 
             # lr scheduler
             self.scheduler = SlantedLRScheduler(
-                self.optimizer, eta_max=learning_rate, discriminative=False)
+                self.optimizer, self.iterations, eta_max=learning_rate, discriminative=False)
 
             # loss function
             self.criterion = nn.BCEWithLogitsLoss(

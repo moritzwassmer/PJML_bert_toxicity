@@ -22,7 +22,6 @@ Configuration parameters:
         ORDER_LABELS (list): Order of the labels
         CLASS_WEIGHTS (dict): Weights for each class for loss function-balancing
         WEIGHTS_LIST (list): List of weights in the order of the labels
-        WARMUP (int): Number of warmup steps for slanted triangular learning rate scheduler
         DECAY (float): Decay factor for discriminative layer
         RESCALING_FACTOR (float): average of class weights for class weight normalization (not in use)
         HYPER_PARAMS (dict): Hyper parameters for model selection
@@ -48,14 +47,14 @@ TOXIC = r"/home/space/datasets/toxic_comment/"  # cluster path
 
 # OUTPUT DIRECTORY DEFINITIONS
 OUTPUT = "output_folder"
-BASE_TEST = 'test_base'  
-BASE_TRAIN = 'train_base'  
-SLANTED_TEST = 'test_slanted_discriminative'  
-SLANTED_TRAIN = 'train_slanted_discriminative'  
+BASE_TEST = 'test_baseline'  
+BASE_TRAIN = 'train_baseline'  
+SLANTED_TEST = 'test_STDL'  
+SLANTED_TRAIN = 'train_STDL'  
 
 # RUN SPECIFIC
-METHOD = 'slanted_discriminative'  # "slanted_discriminative", 'base'
-TRAIN_LENGTH =159571
+METHOD = 'base'  # "slanted_discriminative", 'base'
+TRAIN_LENGTH = 159571
 TEST_LENGTH = 63978
 VAL_LENGTH = TEST_LENGTH//2
 NUM_CLASSES = 6
@@ -76,7 +75,6 @@ CLASS_WEIGHTS = {
 WEIGHTS_LIST = [CLASS_WEIGHTS[key] for key in ORDER_LABELS]
 RESCALING_FACTOR = torch.tensor(
     sum(CLASS_WEIGHTS.values())/len(CLASS_WEIGHTS.keys()), device=DEVICE) #TODO
-WARMUP = 10000
 DECAY = 0.95
 
 HYPER_PARAMS = {
