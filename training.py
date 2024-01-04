@@ -117,15 +117,14 @@ def calc_metrics(labels, predictions, loss, len_dataset, epoch=0):
 
 class SlantedLRScheduler(torch.optim.lr_scheduler._LRScheduler):
     """
-    Slanted triangular learning rate scheduler that increases the learning rate until eta_max for a given ratio and then decreases it again . 
+    Slanted triangular learning rate scheduler that increases the learning rate until eta_max for a 10000 steps and then decreases it again. 
     It can also optionally apply a layer-wise decay term on the learning rate (discriminative=True).
 
     Attributes:
         optimizer (torch.optim.Optimizer): Optimizer for which to define the learning rate
-        iterations (int): Number of iterations over which the learning rate has to be calculated 
         ratio (int): Change ratio for learning rate 
         eta_max (float, optional): Maximum learning rate 
-        cut (float, optional): Fraction of iteration at which the learning rate reaches the peak 
+        cut (float, optional): Number of iterations at which the learning rate reaches the peak 
         last_epoch (int, optional): Index of the last epoch 
         decay (float): Decay term for optional discriminative layer-wise learning rate 
         discriminative (bool): Flag to apply discriminative layer 
@@ -137,10 +136,9 @@ class SlantedLRScheduler(torch.optim.lr_scheduler._LRScheduler):
 
         Args: 
             optimizer (torch.optim.Optimizer): Optimizer for which to define the learning rate
-            iterations (int): Number of iterations over which the learning rate has to be calculated (epochs*batches per epoch)
             ratio (int): Change ratio for learning rate (default: 32)
             eta_max (float, optional): Maximum learning rate (default: 1e-05)
-            cut (float, optional): Fraction of iteration at which the learning rate reaches the peak (default: 0.1)
+            cut (float, optional): Number of iteration at which the learning rate reaches the peak (default: 0.1)
             last_epoch (int, optional): Index of the last epoch (default: -1)
             decay (float): Decay term for optional discriminative layer-wise learning rate (default: DECAY)
             discriminative (bool): Flag to apply discriminative layer (default: True)
@@ -169,9 +167,9 @@ class SlantedLRScheduler(torch.optim.lr_scheduler._LRScheduler):
                      (self.cut * (1 / self.cut - 1)))
         learning_rate = self.eta_max * \
             ((1 + p * (self.ratio - 1)) / self.ratio)
-        # apply discriminative layer rate layer-wise (if discriminative is set)
         if not self.discriminative:
             self.decay = 1
+        # apply discriminative layer rate layer-wise (if discriminative is set)
         decay_lrs = [learning_rate * (self.decay**i)
                      for i in range(len(self.optimizer.param_groups))]
         return decay_lrs
