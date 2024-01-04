@@ -475,8 +475,6 @@ class BERTMultiLabelClassification(nn.Module):
 
         return x
 
-# TASK SHEET: model class
-
 
 class Model(nn.Module):
 
