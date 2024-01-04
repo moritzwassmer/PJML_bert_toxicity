@@ -75,7 +75,7 @@ CLASS_WEIGHTS = {
 WEIGHTS_LIST = [CLASS_WEIGHTS[key] for key in ORDER_LABELS]
 RESCALING_FACTOR = torch.tensor(
     sum(CLASS_WEIGHTS.values())/len(CLASS_WEIGHTS.keys()), device=DEVICE) #TODO
-
+WARMUP = 10000
 DECAY = 0.95
 
 HYPER_PARAMS = {
