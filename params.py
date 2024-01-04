@@ -9,7 +9,7 @@ Configuration parameters:
 
     - Output directory:
         OUTPUT (str): directory where output is saved
-        BASE_TEST, BASE_TRAIN, DISCR_TEST, DISCR_TRAIN, SLANTED_TEST, SLANTED_TRAIN (str): Specific output directories for different training methods 
+        BASE_TEST, BASE_TRAIN, SLANTED_TEST, SLANTED_TRAIN (str): Specific output directories for different training methods 
 
     - Run specific:
         METHOD (str): Training method ('bert_base', 'bert_discr_lr', 'bert_slanted_lr')
@@ -22,6 +22,7 @@ Configuration parameters:
         ORDER_LABELS (list): Order of the labels
         CLASS_WEIGHTS (dict): Weights for each class for loss function-balancing
         WEIGHTS_LIST (list): List of weights in the order of the labels
+        WARMUP (int): Number of warmup steps for slanted triangular learning rate scheduler
         DECAY (float): Decay factor for discriminative layer
         RESCALING_FACTOR (float): average of class weights for class weight normalization (not in use)
         HYPER_PARAMS (dict): Hyper parameters for model selection
@@ -53,7 +54,7 @@ SLANTED_TEST = 'test_slanted_discriminative'
 SLANTED_TRAIN = 'train_slanted_discriminative'  
 
 # RUN SPECIFIC
-METHOD = 'base'  # "slanted_discriminative", 'base'
+METHOD = 'slanted_discriminative'  # "slanted_discriminative", 'base'
 TRAIN_LENGTH =159571
 TEST_LENGTH = 63978
 VAL_LENGTH = TEST_LENGTH//2
