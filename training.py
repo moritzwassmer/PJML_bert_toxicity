@@ -261,7 +261,7 @@ class TrainBERT:
 
             # optimizer: Adam
             self.optimizer = optim.Adam(
-                self.create_param_groups(), lr=learning_rate, weight_decay=0.01)
+                self.create_param_groups(), lr=learning_rate)
 
             # lr scheduler
             self.scheduler = SlantedLRScheduler(
