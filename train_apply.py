@@ -83,7 +83,6 @@ def train_apply(method="base", dataset="jigsaw_toxicity_pred"):
         tuple (labels, predictions, avg_loss, len_data): Validation results after training the model
     """
 
-    berti = models.Model()
 
     for batch_size in HYPER_PARAMS['batch_size']:
         train_loader, test_loader, val_loader = load_data(
@@ -91,6 +90,8 @@ def train_apply(method="base", dataset="jigsaw_toxicity_pred"):
         best_model = [None, 0, None]
 
         for learning_rate in HYPER_PARAMS['learning_rate']:
+            berti = models.Model()
+            
             # hyperparameter stats
             info = f"\nHyperparameters: batch size: {batch_size}, learning rate: {learning_rate}\n"
             print(info)
