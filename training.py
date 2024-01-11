@@ -39,9 +39,8 @@ def shannon_entropy(labels, predictions):
     sum = 0
     entropy = 0
     for i in range(labels.shape[0]):
-        if labels[i] == 1:
-            sum += 1
-            entropy += -(predictions[i]*np.log(predictions[i] + 1e-10))
+        sum += 1
+        entropy += -(predictions[i]*np.log(predictions[i] + 1e-10))
     if sum == 0:
         return 0
     return entropy/sum
