@@ -24,26 +24,50 @@ def write_results(output, file):
         file.write(output)
 
 
-def shannon_entropy(labels, predictions):
+def shannon_entropy(predictions):
     """
-    Calculates the Shannon entropy, given the labels and the predictions (probabilities) of the model for one class. The Shannon entropy
-    is the measure of uncertainty in the given predictions. Note: a small constant is added to the predictions to avoid log(0).
+    Calculates the Shannon-based entropy, given a single or multiple predictions (probabilities) of the model for one class. The Shannon-based entropy
+    is the measure of uncertainty in the given predictions. If there are multiple predictions given, it returns the average Shannon-based entropy 
+    over these predictions.
 
     Args: 
-        labels (numpy.ndarray): True labels
         predictions (numpy.ndarray): Predicted probabilities of the model for one class
 
     Returns:
-        float: Shannon entropy value of the predictions
+        float: Per class average Shannon-based entropy value of the predictions
     """
     sum = 0
-    entropy = 0
-    for i in range(labels.shape[0]):
+    entropy = 0.0
+    for prediction in predictions:
         sum += 1
-        entropy += -(predictions[i]*np.log(predictions[i] + 1e-10))
+        # if the prediction is 0.0, the entropy is also 0.0
+        if prediction == 0:
+            continue
+        else:
+            entropy += -(prediction*np.log(prediction))
     if sum == 0:
         return 0
     return entropy/sum
+
+# TASK SHEET MS3
+def predict(input, model=None):
+    # works with pure text comments and with sigmoid(model output)
+    if model is None:
+        predictions = input
+    else:
+        data = {key: value.to(DEVICE) for key, value in input.items()}
+        predictions = torch.nn.Sigmoid(model.forward(data)).cpu().numpy()
+
+    # calculate confidence per label
+    confidence_scores = {}
+    # TODO add confidence for clean comments?
+    for i in range(predictions.shape[1]):
+        confidence = 1.0 - shannon_entropy(predictions[:, i])
+        # key: e.g. toxic_confidence
+        label_name = ORDER_LABELS[i] + "_confidence"
+        confidence_scores[label_name] = confidence
+
+    return predictions, confidence_scores
 
 
 def calc_metrics(labels, predictions, loss, len_dataset, epoch=0):
@@ -102,14 +126,8 @@ def calc_metrics(labels, predictions, loss, len_dataset, epoch=0):
         'identity_hate': roc_auc_score(np.array(labels)[:, 5], np.array(predictions)[:, 5], average='macro', multi_class='ovr')
     }
 
-    # calculate confidence per label
-    confidence_scores = {}
-    for i in range(labels.shape[1]):
-        confidence = 1.0 - shannon_entropy(labels[:, i], preds_sigmoid[:, i])
-        # key: e.g. toxic_confidence
-        label_name = ORDER_LABELS[i] + "_confidence"
-        confidence_scores[label_name] = confidence
-
+    # calculate confidence per label and append it
+    _, confidence_scores = predict(preds_sigmoid)
     metrics.update(confidence_scores)
     return metrics
 
