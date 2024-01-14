@@ -34,7 +34,7 @@ def tokenize_text(text, tokenizer):
     Args: 
          text (str): Input text to be tokenized
          tokenizer: Tokenizer to be applied
-    
+
     Returns:
         int: Number of tokens obtained from input text after tokenization
     """
@@ -229,8 +229,8 @@ def main():
     message = f"\nValidation\nAvg. testing loss: {metrics['avg_loss']:.2f}, avg. ROC-AUC: {metrics['roc_auc']:.2f}, Accuracy: {metrics['accuracy']:.2f}, TPR: {metrics['TPR']:.2f}, FPR: {metrics['FPR']:.2f}, TNR: {metrics['TNR']:.2f}, FNR: {metrics['FNR']:.2f}\n"
     auc_classes = '\n'.join(
         [f'ROC-AUC for {label}: {metrics[label]:.2f}'for label in ORDER_LABELS])
-    confidence_classes = '\n'.join(
-        [f'Confidence for {label}: {metrics[label + "_confidence"]:.2f}'for label in ORDER_LABELS])
+    confidence_classes = '\n'.join([f'Average confidence: {metrics["average_confidence"]:.2f}'] +
+                                   [f'Confidence for {label}: {metrics[label + "_confidence"]:.2f}'for label in ORDER_LABELS])
     message = message + auc_classes + '\n' + confidence_classes + '\n'
     print(message)
 

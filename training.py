@@ -60,13 +60,17 @@ def predict(input, model=None):
 
     # calculate confidence per label
     confidence_scores = {}
+    count = 0
+    entropy_sum = 0
     # TODO add confidence for clean comments?
     for i in range(predictions.shape[1]):
         confidence = 1.0 - shannon_entropy(predictions[:, i])
+        entropy_sum += shannon_entropy(predictions[:, i])
+        count += 1
         # key: e.g. toxic_confidence
         label_name = ORDER_LABELS[i] + "_confidence"
         confidence_scores[label_name] = confidence
-
+    confidence_scores["average_confidence"] = 1- (entropy_sum/count)
     return predictions, confidence_scores
 
 
