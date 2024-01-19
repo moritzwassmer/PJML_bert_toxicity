@@ -1,3 +1,4 @@
+import pickle
 from torch.utils.data import DataLoader
 import custom_datasets
 import models
@@ -115,6 +116,11 @@ def train_apply(method="base", dataset="jigsaw_toxicity_pred"):
                 if auc_list[i] > best_model[1]:
                     # save: [model, auc value, hyperparameter info, epochs]
                     best_model = [berti, auc_list[i], info, i]
+    # save model
+    model_path = OUTPUT + '/model.pkl'
+    with open(model_path, 'wb') as file:  
+        pickle.dump(best_model[0], file)
+
     message = f'\nOptimal hyperparameters are: {best_model[2][:-1]}, epochs: {best_model[3]+1} with an avg. ROC-AUC of: {best_model[1]:.2f}\n'
     print(message)
 
