@@ -111,7 +111,7 @@ if __name__ == "__main__":
         model = CPU_Unpickler(file).load()
     model.eval()
 
-    name = 'output_subset.csv'
+    name = 'output.csv'
     df = pd.read_csv(name)
 
     for index, row in df.iterrows():
