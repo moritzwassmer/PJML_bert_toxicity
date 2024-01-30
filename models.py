@@ -342,13 +342,13 @@ class BERTBase(nn.Module):
             self.token = nn.Embedding(VOCAB_SIZE, EMBED_SIZE, padding_idx=0).to(
                 DEVICE)  # padding remains 0 during training
             self.position = nn.Embedding(SEQ_LEN, EMBED_SIZE).to(DEVICE)
-            self.segment = nn.Embedding(2, EMBED_SIZE, padding_idx=0)
+            self.segment = nn.Embedding(2, EMBED_SIZE, padding_idx=0).to(DEVICE)
             self.normlayer = nn.LayerNorm(EMBED_SIZE, eps=EPS)
             self.dropout = torch.nn.Dropout(p=DROPOUT)
 
             # create token position tensor
             self.token_pos = torch.tensor(
-                [i for i in range(SEQ_LEN)]).to(DEVICE)
+                [i for i in range(SEQ_LEN)])
 
         def forward(self, sequence, segments):
             """
@@ -361,9 +361,8 @@ class BERTBase(nn.Module):
             Returns:
                 torch.Tensor: Embedding 
             """
-
             total_embedding = self.token(
-                sequence) + self.position(self.token_pos) + self.segment(segments)
+                sequence) + self.position(self.token_pos.to(DEVICE)) + self.segment(segments)
             norm_embedding = self.normlayer(total_embedding)
             return self.dropout(norm_embedding)
 

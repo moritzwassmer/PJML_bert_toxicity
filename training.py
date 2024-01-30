@@ -38,6 +38,8 @@ def shannon_entropy(predictions):
     """
     sum = 0
     entropy = 0.0
+    if not isinstance(predictions, np.ndarray):
+        predictions = np.array([predictions])  # Convert single prediction to numpy array
     for prediction in predictions:
         sum += 1
         # if the prediction is 0.0, the entropy is also 0.0
@@ -62,7 +64,6 @@ def predict(input, model=None):
     confidence_scores = {}
     count = 0
     entropy_sum = 0
-    # TODO add confidence for clean comments?
     for i in range(predictions.shape[1]):
         confidence = 1.0 - shannon_entropy(predictions[:, i])
         entropy_sum += shannon_entropy(predictions[:, i])
