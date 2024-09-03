@@ -2,13 +2,15 @@
 
 ## Description:
 This project has been constructed for the course `Project Machine Learning` in Winter 2023/2024. We implemented BERT (Bidirectional Encoder Representations from Transformers) from scratch to detect toxic content in text. 
-Below we provide an overview over our approach and results. For more details, read the [report 1](Project_Machine_Learning_MS1.pdf), [report 2](Project_Machine_Learning_MS2.pdf), and [report 3](Project_Machine_Learning_MS3.pdf).
+Below we provide an overview over our approach and results. For more details, read the [report 1](reports/Project_Machine_Learning_MS1.pdf), [report 2](reports/Project_Machine_Learning_MS2.pdf), and [report 3](reports/Project_Machine_Learning_MS3.pdf).
 
 ### BERT
 
 
 ### Data
-We used the data from kaggle
+We used the data from the jigsaw kaggle competition https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge
+The task at hand is a multi-label binary classification task, i.e. a comment can have multiple toxicity labels.
+
 
 ### Hyperparameteroptimization
 We perform Hyperparameteroptimization to find an 'optimal' model 
@@ -22,8 +24,8 @@ We use Integrated Gradients to
 3. Install the required dependencies: `pip install -r requirements.txt`
 
 ## Usage:
-1. Prepare your dataset by organizing toxic and non-toxic text samples.
-2. Preprocess the data by cleaning and tokenizing the text.
-3. Train the BERT model using the preprocessed data.
-4. Evaluate the model's performance on a validation set.
-5. Use the trained model to classify new text inputs for toxicity.
+1. Download the toxic comment dataset and place it in folder `in/toxic_comment`
+[Toxic Comment Classification Challenge](https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge/data)
+2. Configure `params.py` according to your needs
+3. Train and evaluate BERT by using `main.py`
+4. Explore predictions by running the `explain_str.ipynb` notebook
