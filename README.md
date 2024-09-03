@@ -8,7 +8,7 @@ Below we provide an overview over our approach and results. For more details, re
 
 
 ### Data
-We used the data from the jigsaw kaggle competition https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge
+We used the data from the jigsaw [kaggle competition](https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge)
 The task at hand is a multi-label binary classification task, i.e. a comment can have multiple toxicity labels.
 
 
@@ -25,7 +25,7 @@ We use Integrated Gradients to
 
 ## Usage:
 1. Download the toxic comment dataset and place it in folder `in/toxic_comment`
-[Toxic Comment Classification Challenge](https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge/data)
+[Dataset download](https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge/data)
 2. Configure `params.py` according to your needs
 3. Train and evaluate BERT by using `main.py`
 4. Explore predictions by running the `explain_str.ipynb` notebook
