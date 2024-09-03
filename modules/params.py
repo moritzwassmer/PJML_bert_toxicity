@@ -42,11 +42,12 @@ Configuration parameters:
 
 # DATASET PATH
 # TOXIC = r"C:/Users/Johannes/Project Machine Learning/datasets/finetuning/toxic_comment/"  # Johannes
-TOXIC = r"/home/space/datasets/toxic_comment/"  # cluster path
+# TOXIC = r"/home/space/datasets/toxic_comment/"  # cluster path
 # TOXIC = r"C:\Users\morit\OneDrive\UNI\Master\WS23\PML\repo\bert_from_scratch.toxic_comment\datasets\finetuning\kaggle-toxic_comment/" # Moritz
+TOXIC = r"in/toxic_comment/"  # dataset path path
 
 # OUTPUT DIRECTORY DEFINITIONS
-OUTPUT = "output_folder"
+OUTPUT = "out"
 BASE_TEST = 'test_baseline'  
 BASE_TRAIN = 'train_baseline'  
 SLANTED_TEST = 'test_STDL'  
