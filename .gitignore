@@ -1,0 +1,32 @@
+# Ignore .txt files
+*.txt
+
+# Ignore .csv files
+*.csv
+
+# Ignore Excel files
+*.xlsx
+*.xls
+
+# Ignore JSON files
+*.json
+
+# Ignore XML files
+*.xml
+
+# Ignore SQLite database files
+*.sqlite
+
+# Ignore log files
+*.log
+
+# Ignore backup files
+*~
+
+*.zip
+
+*.parquet
+
+# Ignore Python bytecode cache
+__pycache__/
+
