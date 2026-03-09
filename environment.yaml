@@ -20,7 +20,6 @@ dependencies:
       - torch>=1.13
       - torchaudio
       - pytorch-lightning
-      - keras
       
       # Transformers & NLP
       - transformers
@@ -28,18 +27,9 @@ dependencies:
       - datasets
       - huggingface-hub
       
-      # ML Utilities
-      - wandb
-      - timm
-      - safetensors
-      
       # Data Processing
       - tqdm
       - pyarrow
       
       # Visualization
       - wordcloud
-      
-      # Other Dependencies
-      - pygame
-      - shapely
