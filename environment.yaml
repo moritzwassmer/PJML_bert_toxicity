@@ -26,6 +26,7 @@ dependencies:
       - tokenizers
       - datasets
       - huggingface-hub
+      - captum
       
       # Data Processing
       - tqdm
